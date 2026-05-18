@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@bargadev/lakon"><img src="https://img.shields.io/npm/v/@bargadev/lakon?color=0F0F0F&label=npm" alt="npm" /></a>
+  <a href="https://www.npmjs.com/package/lakonai"><img src="https://img.shields.io/npm/v/lakonai?color=0F0F0F&label=npm" alt="npm" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-0F0F0F" alt="MIT" /></a>
   <img src="https://img.shields.io/badge/node-%E2%89%A518-0F0F0F" alt="node ≥18" />
   <img src="https://img.shields.io/badge/deps-0-0F0F0F" alt="zero dependencies" />
@@ -79,7 +79,7 @@ Other tools stop at one front. lakon does all three transparently — your agent
 ## Quick start
 
 ```bash
-npm install -g @bargadev/lakon
+npm install -g lakonai
 lakon install
 ```
 
@@ -230,10 +230,10 @@ A `Stop` hook fires at the end of every model turn, reads the latest `usage` blo
 
 ### Update notifications (Claude Code)
 
-A `SessionStart` hook checks `registry.npmjs.org/@bargadev/lakon/latest` at most once per 24 hours (cached at `~/.lakon/version.json`) and, if a newer version exists, emits a `hookSpecificOutput.additionalContext` that surfaces inside the Claude session:
+A `SessionStart` hook checks `registry.npmjs.org/lakonai/latest` at most once per 24 hours (cached at `~/.lakon/version.json`) and, if a newer version exists, emits a `hookSpecificOutput.additionalContext` that surfaces inside the Claude session:
 
 ```
-lakon 0.7.0 available (you have 0.6.0). Update: npm i -g @bargadev/lakon@latest
+lakon 0.7.0 available (you have 0.6.0). Update: npm i -g lakonai@latest
 ```
 
 Outside Claude, `lakon gain` and `lakon version` print the same notice on stderr (yellow when TTY).

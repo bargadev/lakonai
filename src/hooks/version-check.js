@@ -8,7 +8,7 @@ const http = require('http');
 
 const CHECK_TTL_MS = 24 * 60 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 1500;
-const REGISTRY_URL = 'https://registry.npmjs.org/@bargadev/lakon/latest';
+const REGISTRY_URL = 'https://registry.npmjs.org/lakonai/latest';
 
 function lakonHome() {
   /* c8 ignore next */
@@ -161,7 +161,7 @@ function getCachedUpdate() {
 }
 
 function formatNotice(info) {
-  return `lakon ${info.latest} available (you have ${info.current}). Update: npm i -g @bargadev/lakon@latest`;
+  return `lakon ${info.latest} available (you have ${info.current}). Update: npm i -g lakonai@latest`;
 }
 
 module.exports = {

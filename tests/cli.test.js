@@ -39,17 +39,17 @@ test('lakon -h prints HELP', () => {
 
 test('lakon version prints name + version', () => {
   const r = run(['version']);
-  assert.match(r.stdout, /@bargadev\/lakon \d+\.\d+\.\d+/);
+  assert.match(r.stdout, /lakonai \d+\.\d+\.\d+/);
 });
 
 test('lakon --version prints version', () => {
   const r = run(['--version']);
-  assert.match(r.stdout, /@bargadev\/lakon/);
+  assert.match(r.stdout, /lakonai/);
 });
 
 test('lakon -v prints version', () => {
   const r = run(['-v']);
-  assert.match(r.stdout, /@bargadev\/lakon/);
+  assert.match(r.stdout, /lakonai/);
 });
 
 test('lakon list prints platform list', () => {

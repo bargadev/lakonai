@@ -1,5 +1,5 @@
 {
-  "name": "@bargadev/lakon",
+  "name": "lakonai",
   "version": "0.6.1",
   "description": "Spartan replies for AI agents — terse model output + filtered CLI output for Claude Code, Codex, Cursor, Windsurf, Cline, and Gemini.",
   "keywords": [
