@@ -137,7 +137,7 @@ async function main() {
         hookSpecificOutput: {
           hookEventName: 'PreToolUse',
           permissionDecision: 'deny',
-          permissionDecisionReason: `lakon: ${denyReason}`,
+          permissionDecisionReason: `lakonai: ${denyReason}`,
         },
       };
       process.stdout.write(JSON.stringify(response));
@@ -165,7 +165,7 @@ async function main() {
               offset: 1,
               limit: AUTO_CAP_LINES,
             },
-            permissionDecisionReason: `lakon: file has ${n} lines, capped at ${AUTO_CAP_LINES}. Read again with offset=${AUTO_CAP_LINES + 1} for more, or grep -n the symbol you need.`,
+            permissionDecisionReason: `lakonai: file has ${n} lines, capped at ${AUTO_CAP_LINES}. Read again with offset=${AUTO_CAP_LINES + 1} for more, or grep -n the symbol you need.`,
           },
         };
         process.stdout.write(JSON.stringify(response));

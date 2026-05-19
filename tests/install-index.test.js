@@ -90,7 +90,7 @@ test('install --here adds per-project rules in cwd', async () => {
     await withHome(home, async () => {
       const inst = freshRequire('../src/install');
       await captureStdout(() => inst.install({ here: true }));
-      assert.ok(fs.existsSync(path.join(repo, '.cursor', 'rules', 'lakon.mdc')));
+      assert.ok(fs.existsSync(path.join(repo, '.cursor', 'rules', 'lakonai.mdc')));
     });
   } finally {
     process.chdir(prevCwd);

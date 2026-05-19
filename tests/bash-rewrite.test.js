@@ -12,11 +12,11 @@ function run(input) {
   return res.stdout;
 }
 
-test('rewrites filtered commands with lakon prefix', () => {
+test('rewrites filtered commands with lakonai prefix', () => {
   const out = run({ tool_name: 'Bash', tool_input: { command: 'git log --oneline' } });
   const parsed = JSON.parse(out);
   assert.equal(parsed.hookSpecificOutput.permissionDecision, 'allow');
-  assert.equal(parsed.hookSpecificOutput.updatedInput.command, 'lakon git log --oneline');
+  assert.equal(parsed.hookSpecificOutput.updatedInput.command, 'lakonai git log --oneline');
 });
 
 test('rewrites ls / cat / grep / tree / head / tail / rg / ag', () => {
@@ -24,11 +24,15 @@ test('rewrites ls / cat / grep / tree / head / tail / rg / ag', () => {
     const out = run({ tool_name: 'Bash', tool_input: { command: cmd } });
     assert.ok(out, `expected output for ${cmd}`);
     const parsed = JSON.parse(out);
-    assert.match(parsed.hookSpecificOutput.updatedInput.command, /^lakon /);
+    assert.match(parsed.hookSpecificOutput.updatedInput.command, /^lakonai /);
   }
 });
 
-test('does not rewrite already-prefixed lakon command', () => {
+test('does not rewrite already-prefixed lakonai command', () => {
+  assert.equal(run({ tool_name: 'Bash', tool_input: { command: 'lakonai git log' } }), '');
+});
+
+test('does not rewrite legacy lakon prefix', () => {
   assert.equal(run({ tool_name: 'Bash', tool_input: { command: 'lakon git log' } }), '');
 });
 

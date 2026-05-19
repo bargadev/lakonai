@@ -7,8 +7,10 @@ const { installHook, uninstallHook } = require('./claude-hook');
 const { installCommands, uninstallCommands } = require('./claude-commands');
 const { claudeConfigDir } = require('./paths');
 
-const MARK_BEGIN = '<!-- lakon:begin -->';
-const MARK_END = '<!-- lakon:end -->';
+const MARK_BEGIN = '<!-- lakonai:begin -->';
+const MARK_END = '<!-- lakonai:end -->';
+const ANY_BEGIN = '<!-- lakon(?:ai)?:begin -->';
+const ANY_END = '<!-- lakon(?:ai)?:end -->';
 
 function wrap(rule) {
   return `${MARK_BEGIN}\n${rule.trim()}\n${MARK_END}\n`;
@@ -30,7 +32,7 @@ function hasBlock(filePath) {
   const existing = readSafe(filePath);
   /* c8 ignore next */
   if (!existing) return false;
-  const re = new RegExp(`${MARK_BEGIN}[\\s\\S]*?${MARK_END}`);
+  const re = new RegExp(`${ANY_BEGIN}[\\s\\S]*?${ANY_END}`);
   return re.test(existing);
 }
 
@@ -41,7 +43,7 @@ function upsertBlock(platformId, filePath, rule) {
   }
   const existing = readSafe(filePath);
   const block = wrap(rule);
-  const re = new RegExp(`${MARK_BEGIN}[\\s\\S]*?${MARK_END}\\n?`);
+  const re = new RegExp(`${ANY_BEGIN}[\\s\\S]*?${ANY_END}\\n?`);
   const next = re.test(existing) ? existing.replace(re, block) : (existing ? `${existing.trim()}\n\n${block}` : block);
   fs.writeFileSync(filePath, next, 'utf8');
   return filePath;
@@ -50,7 +52,7 @@ function upsertBlock(platformId, filePath, rule) {
 function stripBlock(filePath) {
   const existing = readSafe(filePath);
   if (!existing) return null;
-  const re = new RegExp(`\\n*${MARK_BEGIN}[\\s\\S]*?${MARK_END}\\n?`);
+  const re = new RegExp(`\\n*${ANY_BEGIN}[\\s\\S]*?${ANY_END}\\n?`);
   if (!re.test(existing)) return null;
   const next = existing.replace(re, '').trim();
   if (next) fs.writeFileSync(filePath, next + '\n', 'utf8');
@@ -97,24 +99,33 @@ const PLATFORMS = [
     label: 'Cursor (per-repo rule)',
     scope: 'project',
     detect: () => fs.existsSync(path.join(process.cwd(), '.cursor')),
-    install: ({ rule, id }) => upsertBlock(id, path.join(process.cwd(), '.cursor', 'rules', 'lakon.mdc'), rule),
-    uninstall: () => stripBlock(path.join(process.cwd(), '.cursor', 'rules', 'lakon.mdc')),
+    install: ({ rule, id }) => upsertBlock(id, path.join(process.cwd(), '.cursor', 'rules', 'lakonai.mdc'), rule),
+    uninstall: () => {
+      stripBlock(path.join(process.cwd(), '.cursor', 'rules', 'lakon.mdc'));
+      return stripBlock(path.join(process.cwd(), '.cursor', 'rules', 'lakonai.mdc'));
+    },
   },
   {
     id: 'windsurf',
     label: 'Windsurf (per-repo rule)',
     scope: 'project',
     detect: () => fs.existsSync(path.join(process.cwd(), '.windsurf')),
-    install: ({ rule, id }) => upsertBlock(id, path.join(process.cwd(), '.windsurf', 'rules', 'lakon.md'), rule),
-    uninstall: () => stripBlock(path.join(process.cwd(), '.windsurf', 'rules', 'lakon.md')),
+    install: ({ rule, id }) => upsertBlock(id, path.join(process.cwd(), '.windsurf', 'rules', 'lakonai.md'), rule),
+    uninstall: () => {
+      stripBlock(path.join(process.cwd(), '.windsurf', 'rules', 'lakon.md'));
+      return stripBlock(path.join(process.cwd(), '.windsurf', 'rules', 'lakonai.md'));
+    },
   },
   {
     id: 'cline',
     label: 'Cline (per-repo rule)',
     scope: 'project',
     detect: () => fs.existsSync(path.join(process.cwd(), '.clinerules')),
-    install: ({ rule, id }) => upsertBlock(id, path.join(process.cwd(), '.clinerules', 'lakon.md'), rule),
-    uninstall: () => stripBlock(path.join(process.cwd(), '.clinerules', 'lakon.md')),
+    install: ({ rule, id }) => upsertBlock(id, path.join(process.cwd(), '.clinerules', 'lakonai.md'), rule),
+    uninstall: () => {
+      stripBlock(path.join(process.cwd(), '.clinerules', 'lakon.md'));
+      return stripBlock(path.join(process.cwd(), '.clinerules', 'lakonai.md'));
+    },
   },
   {
     id: 'gemini',

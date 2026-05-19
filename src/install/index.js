@@ -6,7 +6,7 @@ const os = require('os');
 const platforms = require('./platforms');
 const { listBackups } = require('./backup');
 
-const RULE_PATH = path.join(__dirname, '..', 'rules', 'caveman.md');
+const RULE_PATH = path.join(__dirname, '..', 'rules', 'lakonai.md');
 
 const OK = '✅';
 const FAIL = '❌';
@@ -52,16 +52,16 @@ async function install({ only, here = false } = {}) {
 
   if (!targets.length) {
     if (only) {
-      process.stdout.write(`${FAIL} unknown platform "${only}". Run \`lakon list\` to see options.\n`);
+      process.stdout.write(`${FAIL} unknown platform "${only}". Run \`lakonai list\` to see options.\n`);
     } else {
-      process.stdout.write(`${FAIL} no supported global platforms detected. Install Claude Code, Codex, or Gemini CLI first — or run \`lakon install --here\` to write per-project rules (Cursor/Windsurf/Cline) in the current directory.\n`);
+      process.stdout.write(`${FAIL} no supported global platforms detected. Install Claude Code, Codex, or Gemini CLI first — or run \`lakonai install --here\` to write per-project rules (Cursor/Windsurf/Cline) in the current directory.\n`);
     }
     process.exitCode = 1;
     return;
   }
 
-  process.stdout.write('\nlakon install\n');
-  process.stdout.write('─────────────\n');
+  process.stdout.write('\nlakonai install\n');
+  process.stdout.write('───────────────\n');
 
   for (const p of targets) {
     try {
@@ -76,18 +76,18 @@ async function install({ only, here = false } = {}) {
   process.stdout.write('\n');
   if (!only && !here) {
     process.stdout.write(`  ${BULLET} Per-project rules (Cursor/Windsurf/Cline) were skipped.\n`);
-    process.stdout.write(`    Inside a repo? Run \`lakon install --here\` to add them in the current directory.\n`);
+    process.stdout.write(`    Inside a repo? Run \`lakonai install --here\` to add them in the current directory.\n`);
   }
-  process.stdout.write(`  ${BULLET} \`lakon uninstall\` removes only the lakon block (keeps your other content).\n`);
-  process.stdout.write(`  ${BULLET} \`lakon revert\`    restores files to pre-install state from backup.\n`);
-  process.stdout.write(`  ${BULLET} \`lakon gain\`      shows how many tokens you've saved.\n`);
+  process.stdout.write(`  ${BULLET} \`lakonai uninstall\` removes only the lakonai block (keeps your other content).\n`);
+  process.stdout.write(`  ${BULLET} \`lakonai revert\`    restores files to pre-install state from backup.\n`);
+  process.stdout.write(`  ${BULLET} \`lakonai gain\`      shows how many tokens you've saved.\n`);
   process.stdout.write('\nRestart your AI agent (or open a new session) for the rule to take effect.\n');
 }
 
 async function uninstall() {
   const home = os.homedir();
-  process.stdout.write('\nlakon uninstall\n');
-  process.stdout.write('───────────────\n');
+  process.stdout.write('\nlakonai uninstall\n');
+  process.stdout.write('─────────────────\n');
   let any = false;
   for (const p of platforms.list()) {
     try {
@@ -108,8 +108,8 @@ async function revert({ only } = {}) {
     ? platforms.list().filter((p) => p.id === only)
     : platforms.list();
 
-  process.stdout.write('\nlakon revert\n');
-  process.stdout.write('────────────\n');
+  process.stdout.write('\nlakonai revert\n');
+  process.stdout.write('──────────────\n');
 
   let any = false;
   for (const p of targets) {
@@ -129,7 +129,7 @@ async function revert({ only } = {}) {
 }
 
 function backupsReport() {
-  const lines = ['', 'lakon — backup history', '──────────────────────'];
+  const lines = ['', 'lakonai — backup history', '────────────────────────'];
   let any = false;
   for (const p of platforms.list()) {
     const entries = listBackups(p.id);

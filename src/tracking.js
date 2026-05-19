@@ -160,14 +160,14 @@ function rpad(s, n) {
 function report() {
   const entries = readEntries();
   if (!entries.length) {
-    return 'lakon: no usage recorded yet. Run a few commands through `lakon` first.\n';
+    return 'lakonai: no usage recorded yet. Run a few commands through `lakonai` first.\n';
   }
 
   const lines = [];
   const W = byWindow(entries, WEEK_MS);
   const headlinePct = pct(W.saved, W.raw);
   lines.push(
-    `${bold('lakon')}  ${dim('— savings this week:')}  ` +
+    `${bold('lakonai')}  ${dim('— savings this week:')}  ` +
       `${green(tok(W.saved))} ${dim('saved across')} ${W.calls} ${dim('shell calls')} ${green(`(${headlinePct}%)`)}`
   );
   lines.push('');

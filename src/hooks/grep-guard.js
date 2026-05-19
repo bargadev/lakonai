@@ -54,7 +54,7 @@ async function main() {
 
     const updatedInput = { ...input, head_limit: DEFAULT_HEAD_LIMIT };
     const reason = shouldEmit('grep-head-cap')
-      ? `lakon: head_limit auto-set to ${DEFAULT_HEAD_LIMIT}. Pass head_limit explicitly to override; pass output_mode:"count" for a tally instead of matches.`
+      ? `lakonai: head_limit auto-set to ${DEFAULT_HEAD_LIMIT}. Pass head_limit explicitly to override; pass output_mode:"count" for a tally instead of matches.`
       : undefined;
 
     trackRecord({

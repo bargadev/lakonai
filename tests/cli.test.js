@@ -7,7 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 
-const CLI = path.join(__dirname, '..', 'bin', 'lakon.js');
+const CLI = path.join(__dirname, '..', 'bin', 'lakonai.js');
 
 function freshHome() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'lakon-cli-'));
@@ -24,7 +24,7 @@ test('lakon --help prints HELP', () => {
   const r = run(['--help']);
   assert.equal(r.status, 0);
   assert.match(r.stdout, /Usage:/);
-  assert.match(r.stdout, /lakon gain/);
+  assert.match(r.stdout, /lakonai gain/);
 });
 
 test('lakon (no args) prints HELP', () => {
@@ -160,7 +160,7 @@ test('lakon ENOENT command exits 127 with helpful stderr', () => {
   const home = freshHome();
   const r = run(['this-binary-does-not-exist-zzzz'], { LAKON_HOME: home });
   assert.equal(r.status, 127);
-  assert.match(r.stderr, /lakon:/);
+  assert.match(r.stderr, /lakonai:/);
 });
 
 test('lakon shows update hint after gain when cache says newer version', () => {

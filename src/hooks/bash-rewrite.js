@@ -9,10 +9,10 @@ function rewriteIfNeeded(command) {
   if (typeof command !== 'string') return null;
   const trimmed = command.trim();
   if (!trimmed) return null;
-  if (/^(lakon|lak)(\s|$)/.test(trimmed)) return null;
+  if (/^(lakonai|lakon|lak)(\s|$)/.test(trimmed)) return null;
   const firstWord = trimmed.split(/\s+/)[0];
   if (!FILTERED_CMDS.has(firstWord)) return null;
-  return `lakon ${trimmed}`;
+  return `lakonai ${trimmed}`;
 }
 
 async function readStdin() {

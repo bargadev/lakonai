@@ -7,45 +7,46 @@ const { install, uninstall, revert, listPlatforms, backupsReport } = require('..
 const tracking = require('../src/tracking');
 const versionCheck = require('../src/hooks/version-check');
 
-const HELP = `lakon — spartan replies for AI agents
+const HELP = `lakonai — spartan replies for AI agents
 
 Usage:
-  lakon <cmd> [args...]      Run <cmd> and filter its output (tracks savings)
+  lakonai <cmd> [args...]    Run <cmd> and filter its output (tracks savings)
   lak <cmd> [args...]        (short alias)
+  lakon <cmd> [args...]      (legacy alias, kept for back-compat)
 
-  lakon install              Install rule + hooks for detected GLOBAL platforms
+  lakonai install            Install rule + hooks for detected GLOBAL platforms
                              (Claude Code / Codex / Gemini — touches ~/ only)
-  lakon install --here       Same as above + per-project rules (Cursor /
+  lakonai install --here     Same as above + per-project rules (Cursor /
                              Windsurf / Cline) written into the current dir
-  lakon install --only <p>   Install just one platform by id (any scope)
+  lakonai install --only <p> Install just one platform by id (any scope)
                              (every install backs up the target file first)
-  lakon uninstall            Strip the lakon block (keeps rest of file)
-  lakon revert [--only <p>]  Restore files to pre-install state from backup
-  lakon backups              Show backup history per platform
-  lakon list                 Show supported platforms
+  lakonai uninstall          Strip the lakonai block (keeps rest of file)
+  lakonai revert [--only <p>] Restore files to pre-install state from backup
+  lakonai backups            Show backup history per platform
+  lakonai list               Show supported platforms
 
-  lakon gain                 Show token savings (hour / day / week / month / all)
-  lakon inspect <cmd> ...    Run <cmd> once and show raw vs filtered (no tracking)
-  lakon reset                Wipe the savings log
-  lakon version              Print the installed lakon version
-  lakon --help               This help
+  lakonai gain               Show token savings (hour / day / week / month / all)
+  lakonai inspect <cmd> ...  Run <cmd> once and show raw vs filtered (no tracking)
+  lakonai reset              Wipe the savings log
+  lakonai version            Print the installed lakonai version
+  lakonai --help             This help
 
 Supported filters: git (log/status/diff/show), ls, tree, cat, head, tail, grep, rg, ag.
 Unsupported commands run unchanged (passthrough, still tracked as 0% savings).
 
 Multi-profile Claude Code (e.g. claude-my / claude-arco wrappers):
-  CLAUDE_CONFIG_DIR=$HOME/.claude-my   lakon install
-  CLAUDE_CONFIG_DIR=$HOME/.claude-arco lakon install
+  CLAUDE_CONFIG_DIR=$HOME/.claude-my   lakonai install
+  CLAUDE_CONFIG_DIR=$HOME/.claude-arco lakonai install
 
 Update notifications:
-  SessionStart hook + \`lakon gain\` / \`lakon version\` check npm once per day.
+  SessionStart hook + \`lakonai gain\` / \`lakonai version\` check npm once per day.
   Disable with LAKON_NO_UPDATE_CHECK=1.
 `;
 
 function runAndFilter(cmd, args) {
   const child = spawnSync(cmd, args, { encoding: 'utf8', stdio: ['inherit', 'pipe', 'inherit'] });
   if (child.error) {
-    process.stderr.write(`lakon: ${child.error.message}\n`);
+    process.stderr.write(`lakonai: ${child.error.message}\n`);
     process.exit(127);
   }
   /* c8 ignore next */
@@ -68,7 +69,7 @@ function runAndFilter(cmd, args) {
 
 function inspectCmd(rest) {
   if (!rest.length) {
-    process.stderr.write('lakon inspect: missing command\n');
+    process.stderr.write('lakonai inspect: missing command\n');
     process.exit(2);
   }
   const [cmd, ...args] = rest;
@@ -163,7 +164,7 @@ async function main() {
   }
   if (first === 'reset') {
     const ok = tracking.reset();
-    process.stdout.write(ok ? 'lakon: log cleared\n' : 'lakon: nothing to clear\n');
+    process.stdout.write(ok ? 'lakonai: log cleared\n' : 'lakonai: nothing to clear\n');
     return;
   }
 
@@ -172,6 +173,6 @@ async function main() {
 
 /* c8 ignore next 4 */
 main().catch((err) => {
-  process.stderr.write(`lakon: ${err.message}\n`);
+  process.stderr.write(`lakonai: ${err.message}\n`);
   process.exit(1);
 });

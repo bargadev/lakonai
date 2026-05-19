@@ -60,7 +60,7 @@ test('installCommands writes to CLAUDE_CONFIG_DIR when set', () => {
   withEnv('CLAUDE_CONFIG_DIR', cfgDir, () => {
     const { installCommands } = freshRequire('../src/install/claude-commands');
     installCommands(home);
-    assert.ok(fs.existsSync(path.join(cfgDir, 'commands', 'lakon', 'gain.md')));
+    assert.ok(fs.existsSync(path.join(cfgDir, 'commands', 'lakonai', 'gain.md')));
     assert.ok(!fs.existsSync(path.join(home, '.claude', 'commands')));
   });
 });

@@ -77,10 +77,10 @@ test('claude-code install writes CLAUDE.md with rule block + hook + commands', a
     const result = cc.install({ home, rule: RULE, id: cc.id });
     assert.ok(result.includes('CLAUDE.md'));
     const md = fs.readFileSync(path.join(home, '.claude', 'CLAUDE.md'), 'utf8');
-    assert.match(md, /lakon:begin/);
+    assert.match(md, /lakonai:begin/);
     assert.match(md, /do less, mean more/);
     assert.ok(fs.existsSync(path.join(home, '.claude', 'hooks', 'lakon-bash-rewrite.js')));
-    assert.ok(fs.existsSync(path.join(home, '.claude', 'commands', 'lakon', 'gain.md')));
+    assert.ok(fs.existsSync(path.join(home, '.claude', 'commands', 'lakonai', 'gain.md')));
   });
 });
 
@@ -106,7 +106,7 @@ test('claude-code install preserves existing CLAUDE.md content + appends block',
     cc.install({ home, rule: RULE, id: cc.id });
     const md = fs.readFileSync(path.join(home, '.claude', 'CLAUDE.md'), 'utf8');
     assert.match(md, /user content here/);
-    assert.match(md, /lakon:begin/);
+    assert.match(md, /lakonai:begin/);
   });
 });
 
@@ -121,7 +121,7 @@ test('claude-code install updates existing lakon block (idempotent)', async () =
     const md = fs.readFileSync(path.join(home, '.claude', 'CLAUDE.md'), 'utf8');
     assert.ok(!md.includes('rule v1'));
     assert.match(md, /rule v2/);
-    const blocks = md.match(/lakon:begin/g);
+    const blocks = md.match(/lakonai:begin/g);
     assert.equal(blocks.length, 1, 'should have exactly one block');
   });
 });
@@ -143,7 +143,7 @@ test('codex install/uninstall round-trip', async () => {
   assert.equal(codex.detect(home), true);
   codex.install({ home, rule: RULE, id: codex.id });
   const agentsPath = path.join(home, '.codex', 'AGENTS.md');
-  assert.match(fs.readFileSync(agentsPath, 'utf8'), /lakon:begin/);
+  assert.match(fs.readFileSync(agentsPath, 'utf8'), /lakonai:begin/);
   codex.uninstall({ home });
   assert.equal(fs.existsSync(agentsPath), false);
 });
@@ -163,7 +163,7 @@ test('gemini install/uninstall round-trip', () => {
   assert.equal(g.detect(home), true);
   g.install({ home, rule: RULE, id: g.id });
   const filePath = path.join(home, '.gemini', 'GEMINI.md');
-  assert.match(fs.readFileSync(filePath, 'utf8'), /lakon:begin/);
+  assert.match(fs.readFileSync(filePath, 'utf8'), /lakonai:begin/);
   g.uninstall({ home });
   assert.equal(fs.existsSync(filePath), false);
 });
