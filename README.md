@@ -328,8 +328,8 @@ Every token your agent emits or reads is paid for — in latency, in money, in c
 ## Development
 
 ```bash
-git clone https://github.com/bargadev/lakon-lib
-cd lakon-lib
+git clone https://github.com/bargadev/lakonai-lib
+cd lakonai-lib
 npm install                       # only devDeps (c8 for coverage); zero runtime deps
 node --test tests/                # run the suite
 npm run test:coverage             # text + HTML coverage report (coverage/index.html)

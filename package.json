@@ -18,13 +18,13 @@
   ],
   "license": "MIT",
   "author": "bargadev",
-  "homepage": "https://github.com/bargadev/lakon-lib",
+  "homepage": "https://github.com/bargadev/lakonai-lib",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/bargadev/lakon-lib.git"
+    "url": "git+https://github.com/bargadev/lakonai-lib.git"
   },
   "bugs": {
-    "url": "https://github.com/bargadev/lakon-lib/issues"
+    "url": "https://github.com/bargadev/lakonai-lib/issues"
   },
   "type": "commonjs",
   "main": "src/filters/index.js",
