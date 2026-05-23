@@ -1,6 +1,6 @@
 {
   "name": "lakonai",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "lakonai — Spartan replies for AI agents. Terse model output + filtered CLI output for Claude Code, Codex, Cursor, Windsurf, Cline, and Gemini.",
   "keywords": [
     "claude",
