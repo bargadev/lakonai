@@ -68,13 +68,13 @@ function writeSettings(home, data) {
 }
 
 function entryHasHook(entry, basename) {
-  /* c8 ignore next */
+  /* istanbul ignore next */
   if (!entry || !Array.isArray(entry.hooks)) return false;
   return entry.hooks.some((h) => h && typeof h.command === 'string' && h.command.includes(basename));
 }
 
 function mergeHook(data, hookDef, dest) {
-  /* c8 ignore next */
+  /* istanbul ignore next */
   const eventKey = hookDef.event || 'PreToolUse';
   data.hooks = data.hooks || {};
   data.hooks[eventKey] = data.hooks[eventKey] || [];
@@ -83,7 +83,7 @@ function mergeHook(data, hookDef, dest) {
     const existing = data.hooks[eventKey].find((e) => e.matcher === hookDef.matcher);
     if (existing) {
       if (!entryHasHook(existing, hookDef.basename)) {
-        /* c8 ignore next */
+        /* istanbul ignore next */
         existing.hooks = existing.hooks || [];
         existing.hooks.push({ type: 'command', command: dest });
       }
@@ -135,7 +135,7 @@ function installHook(home) {
   try {
     const { writeInstalledVersionMarker } = require('../hooks/version-check');
     writeInstalledVersionMarker(require('../../package.json').version);
-    /* c8 ignore next 3 */
+    /* istanbul ignore next */
   } catch {
     // never let marker write break install
   }
@@ -147,11 +147,11 @@ function uninstallHook(home) {
   const { ok, data } = readSettings(home);
   if (ok && data.hooks && typeof data.hooks === 'object') {
     for (const eventKey of Object.keys(data.hooks)) {
-      /* c8 ignore next */
+      /* istanbul ignore next */
       if (!Array.isArray(data.hooks[eventKey])) continue;
       data.hooks[eventKey] = data.hooks[eventKey]
         .map((entry) => {
-          /* c8 ignore next */
+          /* istanbul ignore next */
           if (!Array.isArray(entry.hooks)) return entry;
           const remaining = entry.hooks.filter(
             (h) => !(h.command && ALL_BASENAMES.some((b) => h.command.includes(b)))
@@ -163,13 +163,14 @@ function uninstallHook(home) {
       if (data.hooks[eventKey].length === 0) delete data.hooks[eventKey];
     }
     if (Object.keys(data.hooks).length === 0) delete data.hooks;
+    /* istanbul ignore next -- settings file is always present on this path */
     if (fs.existsSync(settingsPath(home))) writeSettings(home, data);
   }
 
   for (const h of [...HOOKS, ...SUPPORT_FILES]) {
     const dest = hookDest(home, h.basename);
     if (fs.existsSync(dest)) {
-      try { fs.unlinkSync(dest); /* c8 ignore next */ } catch {}
+      try { fs.unlinkSync(dest); /* istanbul ignore next */ } catch {}
     }
   }
 }

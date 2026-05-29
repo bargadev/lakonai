@@ -2,9 +2,9 @@
 
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 const platforms = require('./platforms');
 const { listBackups } = require('./backup');
+const { homedir } = require('./paths');
 
 const RULE_PATH = path.join(__dirname, '..', 'rules', 'lakonai.md');
 
@@ -18,26 +18,26 @@ function readRule() {
 }
 
 function shortenPath(p) {
-  /* c8 ignore next */
+  /* istanbul ignore next */
   if (!p) return p;
-  const home = os.homedir();
+  const home = homedir();
   if (p.startsWith(home)) return '~' + p.slice(home.length);
   return p;
 }
 
 function padLabel(label, width = 26) {
-  /* c8 ignore next */
+  /* istanbul ignore next */
   return label.length >= width ? label : label + ' '.repeat(width - label.length);
 }
 
 function detectPlatforms() {
-  const home = os.homedir();
+  const home = homedir();
   return platforms.list().filter((p) => p.detect(home));
 }
 
 async function install({ only, here = false } = {}) {
   const rule = readRule();
-  const home = os.homedir();
+  const home = homedir();
   const all = platforms.list();
 
   let targets;
@@ -85,7 +85,7 @@ async function install({ only, here = false } = {}) {
 }
 
 async function uninstall() {
-  const home = os.homedir();
+  const home = homedir();
   process.stdout.write('\nlakonai uninstall\n');
   process.stdout.write('─────────────────\n');
   let any = false;
@@ -149,7 +149,7 @@ function backupsReport() {
 
 function listPlatforms() {
   return platforms.list().map((p) => {
-    const detected = p.detect(os.homedir());
+    const detected = p.detect(homedir());
     const mark = detected ? OK : ' ';
     const scope = p.scope === 'project' ? '[project]' : '[global] ';
     return `${mark}  ${p.id.padEnd(14)} ${scope} ${p.label}`;

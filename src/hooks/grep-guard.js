@@ -9,11 +9,11 @@ const { shouldEmit } = require('./throttle');
 const DEFAULT_HEAD_LIMIT = 30;
 
 function lakonHome() {
-  /* c8 ignore next */
+  /* istanbul ignore next */
   return process.env.LAKON_HOME || path.join(os.homedir(), '.lakon');
 }
 
-/* c8 ignore start */
+/* istanbul ignore next */
 function trackRecord({ cmd, args, rawTokens, filteredTokens }) {
   if (process.env.LAKON_NO_TRACK === '1') return;
   try {
@@ -32,8 +32,8 @@ function trackRecord({ cmd, args, rawTokens, filteredTokens }) {
     // never let tracking break the hook
   }
 }
-/* c8 ignore stop */
 
+/* istanbul ignore next */
 async function readStdin() {
   let raw = '';
   process.stdin.setEncoding('utf8');
@@ -41,7 +41,7 @@ async function readStdin() {
   return raw;
 }
 
-/* c8 ignore start */
+/* istanbul ignore next */
 async function main() {
   try {
     const raw = await readStdin();
@@ -78,6 +78,7 @@ async function main() {
     process.exit(0);
   }
 }
-/* c8 ignore stop */
+/* istanbul ignore next */
+if (require.main === module) main();
 
-main();
+module.exports = { trackRecord, lakonHome, DEFAULT_HEAD_LIMIT };

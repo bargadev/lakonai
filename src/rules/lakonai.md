@@ -53,8 +53,6 @@ For any shell command whose output you read into context, prefix it with `lakona
 | `lakonai cat <file>`  | `cat <file>`    |
 | `lakonai grep -r …`   | `grep -r …`     |
 
-The short alias `lak` works identically: `lak git log`. The legacy alias `lakon` is also accepted.
-
 Unsupported commands run unchanged through `lakonai`, so when in doubt, prefix it.
 
 **Skip the prefix only when:**

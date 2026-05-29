@@ -23,7 +23,7 @@ function filterLong(raw) {
 
 function filter(raw) {
   const text = stripAnsi(raw);
-  /* c8 ignore next */
+  /* istanbul ignore next */
   const firstReal = text.split('\n').find((l) => l.trim() && !/^total\s+\d+/.test(l)) || '';
   if (LONG_FORMAT_RE.test(firstReal)) {
     return filterLong(text);

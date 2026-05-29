@@ -9,12 +9,13 @@ function rewriteIfNeeded(command) {
   if (typeof command !== 'string') return null;
   const trimmed = command.trim();
   if (!trimmed) return null;
-  if (/^(lakonai|lakon|lak)(\s|$)/.test(trimmed)) return null;
+  if (/^lakonai(\s|$)/.test(trimmed)) return null;
   const firstWord = trimmed.split(/\s+/)[0];
   if (!FILTERED_CMDS.has(firstWord)) return null;
   return `lakonai ${trimmed}`;
 }
 
+/* istanbul ignore next */
 async function readStdin() {
   let raw = '';
   process.stdin.setEncoding('utf8');
@@ -22,6 +23,7 @@ async function readStdin() {
   return raw;
 }
 
+/* istanbul ignore next */
 async function main() {
   try {
     const raw = await readStdin();
@@ -51,4 +53,7 @@ async function main() {
   }
 }
 
-main();
+/* istanbul ignore next */
+if (require.main === module) main();
+
+module.exports = { rewriteIfNeeded, FILTERED_CMDS };

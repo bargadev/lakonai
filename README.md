@@ -114,7 +114,7 @@ You'll see savings stack up immediately in `lakonai gain`.
 
 ## Use the filter directly
 
-The CLI works as a standalone tool too. Run any shell command through `lakonai` (or the short alias `lak`) to filter its output:
+The CLI works as a standalone tool too. Run any shell command through `lakonai` to filter its output:
 
 ```bash
 lakonai git status        # compressed git status
@@ -190,8 +190,6 @@ saved:    85%
 | `lakonai inspect <cmd>`              | Run once and show raw-vs-filtered (no tracking)                       |
 | `lakonai reset`                      | Wipe the savings log                                                  |
 | `lakonai version` / `--version` / `-v` | Print the installed lakonai version                                 |
-
-`lak` is the short alias for `lakonai`. `lakon` is kept as a legacy alias so existing setups keep working.
 
 ---
 

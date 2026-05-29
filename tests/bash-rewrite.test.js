@@ -1,6 +1,5 @@
 'use strict';
 
-const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { spawnSync } = require('node:child_process');
 const path = require('node:path');
@@ -30,14 +29,6 @@ test('rewrites ls / cat / grep / tree / head / tail / rg / ag', () => {
 
 test('does not rewrite already-prefixed lakonai command', () => {
   assert.equal(run({ tool_name: 'Bash', tool_input: { command: 'lakonai git log' } }), '');
-});
-
-test('does not rewrite legacy lakon prefix', () => {
-  assert.equal(run({ tool_name: 'Bash', tool_input: { command: 'lakon git log' } }), '');
-});
-
-test('does not rewrite lak short alias', () => {
-  assert.equal(run({ tool_name: 'Bash', tool_input: { command: 'lak grep -n foo' } }), '');
 });
 
 test('does not rewrite unsupported commands', () => {

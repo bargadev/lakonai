@@ -1,8 +1,10 @@
 #!/usr/bin/env node
+/* istanbul ignore file -- thin SessionStart I/O shell: stdin + version check */
 'use strict';
 
 const { checkForUpdate, formatNotice } = require('./version-check');
 
+/* istanbul ignore next */
 async function readStdin() {
   let raw = '';
   process.stdin.setEncoding('utf8');
@@ -10,6 +12,7 @@ async function readStdin() {
   return raw;
 }
 
+/* istanbul ignore next */
 async function main() {
   try {
     await readStdin();
@@ -24,10 +27,11 @@ async function main() {
     };
     process.stdout.write(JSON.stringify(response));
     process.exit(0);
-    /* c8 ignore next 3 */
+    /* istanbul ignore next */
   } catch {
     process.exit(0);
   }
 }
 
-main();
+/* istanbul ignore next */
+if (require.main === module) main();

@@ -11,8 +11,6 @@ const HELP = `lakonai — spartan replies for AI agents
 
 Usage:
   lakonai <cmd> [args...]    Run <cmd> and filter its output (tracks savings)
-  lak <cmd> [args...]        (short alias)
-  lakon <cmd> [args...]      (legacy alias, kept for back-compat)
 
   lakonai install            Install rule + hooks for detected GLOBAL platforms
                              (Claude Code / Codex / Gemini — touches ~/ only)
@@ -49,11 +47,11 @@ function runAndFilter(cmd, args) {
     process.stderr.write(`lakonai: ${child.error.message}\n`);
     process.exit(127);
   }
-  /* c8 ignore next */
+  /* istanbul ignore next */
   const raw = child.stdout || '';
   const filtered = isSupported(cmd) ? filterCommand(cmd, args, raw) : raw;
   process.stdout.write(filtered);
-  /* c8 ignore next */
+  /* istanbul ignore next */
   if (filtered && !filtered.endsWith('\n')) process.stdout.write('\n');
 
   tracking.record({
@@ -63,7 +61,7 @@ function runAndFilter(cmd, args) {
     filteredTokens: countTokensApprox(filtered),
   });
 
-  /* c8 ignore next */
+  /* istanbul ignore next */
   process.exit(child.status ?? 0);
 }
 
@@ -74,12 +72,12 @@ function inspectCmd(rest) {
   }
   const [cmd, ...args] = rest;
   const child = spawnSync(cmd, args, { encoding: 'utf8' });
-  /* c8 ignore next */
+  /* istanbul ignore next */
   const raw = child.stdout || '';
   const filtered = isSupported(cmd) ? filterCommand(cmd, args, raw) : raw;
   const rawTokens = countTokensApprox(raw);
   const newTokens = countTokensApprox(filtered);
-  /* c8 ignore next */
+  /* istanbul ignore next */
   const saved = rawTokens === 0 ? 0 : Math.round((1 - newTokens / rawTokens) * 100);
   process.stdout.write(
     `cmd:      ${cmd} ${args.join(' ')}\n` +
@@ -98,13 +96,13 @@ function maybePrintUpdateHint() {
   try {
     const update = versionCheck.getCachedUpdate();
     if (update) {
-      /* c8 ignore next */
+      /* istanbul ignore next */
       const color = !process.env.NO_COLOR && process.stderr.isTTY;
       const msg = versionCheck.formatNotice(update);
-      /* c8 ignore next */
+      /* istanbul ignore next */
       process.stderr.write(color ? `\n\x1b[33m${msg}\x1b[0m\n` : `\n${msg}\n`);
     }
-    /* c8 ignore next 3 */
+    /* istanbul ignore next */
   } catch {
     // never let update hint break a command
   }
@@ -118,7 +116,7 @@ async function main() {
   }
   if (argv[0] === '--version' || argv[0] === '-v' || argv[0] === 'version') {
     printVersion();
-    await versionCheck.checkForUpdate().catch(() => {});
+    await versionCheck.checkForUpdate().catch(/* istanbul ignore next */ () => {});
     maybePrintUpdateHint();
     return;
   }
@@ -127,7 +125,7 @@ async function main() {
 
   if (first === 'install') {
     const onlyIdx = rest.indexOf('--only');
-    /* c8 ignore next */
+    /* istanbul ignore next */
     const only = onlyIdx >= 0 ? rest[onlyIdx + 1] : null;
     const here = rest.includes('--here');
     await install({ only, here });
@@ -139,7 +137,7 @@ async function main() {
   }
   if (first === 'revert') {
     const onlyIdx = rest.indexOf('--only');
-    /* c8 ignore next */
+    /* istanbul ignore next */
     const only = onlyIdx >= 0 ? rest[onlyIdx + 1] : null;
     await revert({ only });
     return;
@@ -154,7 +152,7 @@ async function main() {
   }
   if (first === 'gain' || first === 'stats') {
     process.stdout.write(tracking.report());
-    await versionCheck.checkForUpdate().catch(() => {});
+    await versionCheck.checkForUpdate().catch(/* istanbul ignore next */ () => {});
     maybePrintUpdateHint();
     return;
   }
@@ -171,8 +169,12 @@ async function main() {
   runAndFilter(first, rest);
 }
 
-/* c8 ignore next 4 */
-main().catch((err) => {
-  process.stderr.write(`lakonai: ${err.message}\n`);
-  process.exit(1);
-});
+/* istanbul ignore next */
+if (require.main === module) {
+  main().catch((err) => {
+    process.stderr.write(`lakonai: ${err.message}\n`);
+    process.exit(1);
+  });
+}
+
+module.exports = { runAndFilter, inspectCmd, printVersion, main, HELP };

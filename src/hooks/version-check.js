@@ -11,7 +11,7 @@ const FETCH_TIMEOUT_MS = 1500;
 const REGISTRY_URL = 'https://registry.npmjs.org/lakonai/latest';
 
 function lakonHome() {
-  /* c8 ignore next */
+  /* istanbul ignore next */
   return process.env.LAKON_HOME || path.join(os.homedir(), '.lakon');
 }
 
@@ -31,7 +31,7 @@ function writeCache(data) {
   try {
     fs.mkdirSync(lakonHome(), { recursive: true });
     fs.writeFileSync(cachePath(), JSON.stringify(data));
-    /* c8 ignore next 3 */
+    /* istanbul ignore next */
   } catch {
     // never let cache write break anything
   }
@@ -47,9 +47,9 @@ function currentVersion() {
   } catch {
     // ignore — fall through to package.json lookup
   }
+  /* istanbul ignore next */
   try {
     return require('../../package.json').version;
-    /* c8 ignore next 3 */
   } catch {
     return null;
   }
@@ -59,7 +59,7 @@ function writeInstalledVersionMarker(version) {
   try {
     fs.mkdirSync(lakonHome(), { recursive: true });
     fs.writeFileSync(installedVersionMarkerPath(), JSON.stringify({ version }));
-    /* c8 ignore next 3 */
+    /* istanbul ignore next */
   } catch {
     // never let marker write break install
   }
@@ -76,7 +76,7 @@ function semverCmp(a, b) {
   return 0;
 }
 
-/* c8 ignore next */
+/* istanbul ignore next */
 function fetchLatest(url = process.env.LAKON_REGISTRY_URL || REGISTRY_URL, timeout = FETCH_TIMEOUT_MS) {
   return new Promise((resolve) => {
     let settled = false;
@@ -87,7 +87,7 @@ function fetchLatest(url = process.env.LAKON_REGISTRY_URL || REGISTRY_URL, timeo
       }
     };
     try {
-      /* c8 ignore next */
+      /* istanbul ignore next */
       const client = url.startsWith('http://') ? http : https;
       const req = client.get(url, { timeout }, (res) => {
         if (res.statusCode !== 200) {
@@ -99,7 +99,7 @@ function fetchLatest(url = process.env.LAKON_REGISTRY_URL || REGISTRY_URL, timeo
         res.on('data', (c) => (body += c));
         res.on('end', () => {
           try {
-            /* c8 ignore next */
+            /* istanbul ignore next */
             finish(JSON.parse(body).version || null);
           } catch {
             finish(null);
@@ -108,10 +108,10 @@ function fetchLatest(url = process.env.LAKON_REGISTRY_URL || REGISTRY_URL, timeo
       });
       req.on('error', () => finish(null));
       req.on('timeout', () => {
-        try { req.destroy(); /* c8 ignore next */ } catch {}
+        try { req.destroy(); /* istanbul ignore next */ } catch {}
         finish(null);
       });
-      /* c8 ignore next 3 */
+      /* istanbul ignore next */
     } catch {
       finish(null);
     }
@@ -125,7 +125,7 @@ function isDisabled() {
 async function checkForUpdate({ force = false } = {}) {
   if (isDisabled()) return null;
   const current = currentVersion();
-  /* c8 ignore next */
+  /* istanbul ignore next */
   if (!current) return null;
 
   const cache = readCache();
@@ -150,7 +150,7 @@ async function checkForUpdate({ force = false } = {}) {
 function getCachedUpdate() {
   if (isDisabled()) return null;
   const current = currentVersion();
-  /* c8 ignore next */
+  /* istanbul ignore next */
   if (!current) return null;
   const cache = readCache();
   if (!cache || !cache.latest) return null;

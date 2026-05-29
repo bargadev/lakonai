@@ -30,7 +30,7 @@ function readSafe(p) {
 
 function hasBlock(filePath) {
   const existing = readSafe(filePath);
-  /* c8 ignore next */
+  /* istanbul ignore next */
   if (!existing) return false;
   const re = new RegExp(`${ANY_BEGIN}[\\s\\S]*?${ANY_END}`);
   return re.test(existing);
@@ -74,9 +74,9 @@ const PLATFORMS = [
       const rulePath = upsertBlock(id, path.join(claudeConfigDir(home), 'CLAUDE.md'), rule);
       const hookResult = installHook(home);
       const cmds = installCommands(home);
-      /* c8 ignore next */
+      /* istanbul ignore next */
       const suffixHook = hookResult.settingsMerged ? '+ PreToolUse hook' : `(hook: ${hookResult.note})`;
-      /* c8 ignore next */
+      /* istanbul ignore next */
       const suffixCmds = cmds.length ? `+ ${cmds.join(' ')}` : '';
       return [rulePath, suffixHook, suffixCmds].filter(Boolean).join(' ');
     },

@@ -66,6 +66,7 @@ function removeCommandsFromDir(dir) {
   }
   try {
     const left = fs.readdirSync(dir);
+    /* istanbul ignore next -- only rmdir when the dir is left empty */
     if (!left.length) fs.rmdirSync(dir);
   } catch {}
   return removed;

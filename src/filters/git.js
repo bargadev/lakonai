@@ -23,7 +23,7 @@ function filterLog(raw) {
       continue;
     }
     if (LOG_AUTHOR_RE.test(line) || LOG_DATE_RE.test(line) || line.startsWith('Merge:')) continue;
-    /* c8 ignore next */
+    /* istanbul ignore next */
     if (pendingHash && !captured && line.trim() && !line.startsWith(' ')) continue;
     if (pendingHash && !captured && line.trim()) {
       out.push(`${pendingHash} ${line.trim()}`);
@@ -53,7 +53,7 @@ function filterStatus(raw) {
     if (STATUS_HEADER_RE.test(line)) continue;
     if (!line.trim()) continue;
     const cleaned = line.replace(/^\s+/, '').replace(/^\(use.*/, '').trim();
-    /* c8 ignore next */
+    /* istanbul ignore next */
     if (!cleaned) continue;
     if (mode === 'changed') changed.push(cleaned);
     else if (mode === 'untracked') untracked.push(cleaned);

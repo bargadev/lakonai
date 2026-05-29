@@ -9,7 +9,7 @@ const DAY_MS = 24 * HOUR_MS;
 const WEEK_MS = 7 * DAY_MS;
 
 function dataDir() {
-  /* c8 ignore next */
+  /* istanbul ignore next */
   return process.env.LAKON_HOME || path.join(os.homedir(), '.lakon');
 }
 
@@ -30,7 +30,7 @@ function record({ cmd, args, rawTokens, filteredTokens }) {
       saved: Math.max(0, rawTokens - filteredTokens),
     };
     fs.appendFileSync(logPath(), JSON.stringify(entry) + '\n');
-    /* c8 ignore next 3 */
+    /* istanbul ignore next */
   } catch {
     // never let tracking break a user command
   }
@@ -147,7 +147,7 @@ const cyan = (s) => paint(s, '36');
 
 function pad(s, n) {
   s = String(s);
-  /* c8 ignore next */
+  /* istanbul ignore next */
   if (s.length >= n) return s;
   return s + ' '.repeat(n - s.length);
 }

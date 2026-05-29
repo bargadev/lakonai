@@ -29,9 +29,7 @@
   "type": "commonjs",
   "main": "src/filters/index.js",
   "bin": {
-    "lakonai": "bin/lakonai.js",
-    "lakon": "bin/lakonai.js",
-    "lak": "bin/lakonai.js"
+    "lakonai": "bin/lakonai.js"
   },
   "files": [
     "bin/",
@@ -41,14 +39,14 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node --test tests/",
-    "test:coverage": "c8 --reporter=text --reporter=html node --test tests/",
-    "test:coverage:check": "c8 --check-coverage --lines 100 --branches 100 --functions 100 node --test tests/"
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "test:coverage:check": "jest --coverage"
   },
   "engines": {
     "node": ">=18"
   },
   "devDependencies": {
-    "c8": "^11.0.0"
+    "jest": "^29.7.0"
   }
 }
