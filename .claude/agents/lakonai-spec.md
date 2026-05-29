@@ -82,22 +82,49 @@ rtk only *suggests* via a manual command; lakonai *activates by itself*.
   NEVER drop lines by guessing they're noise — that could hide a real error.
 - Disable with `LAKON_NO_LEARN=1` (also gated by `LAKON_NO_TRACK=1`).
 
+## Terse output side (caveman-inspired)
+
+- **Intensity modes** (`src/mode.js`): `lakonai mode <lite|full|ultra>`, persisted
+  at `~/.lakon/mode`, override via `$LAKON_MODE`; default `full`.
+- **Per-turn reinforcement** (`src/hooks/prompt-reinforce.js`, UserPromptSubmit):
+  re-injects the terse reminder for the active mode each turn so the model doesn't
+  drift verbose. Opt out `LAKON_NO_REINFORCE=1`.
+- **Memory compress** (`src/compress.js`): `lakonai compress <file> [--llm] [--dry-run]`.
+  Default heuristic = offline, near-lossless (blank/whitespace collapse, code
+  preserved). `--llm` rewrites prose via the user's `claude` CLI (`claude --print`)
+  — never a separate API key/dep. Backs up to `<file>.bak`.
+- The shipped rule lives in `src/rules/lakonai.md` (levels + auto-clarity carve-outs).
+
 ## Hooks (`src/hooks/`)
 
 - `bash-rewrite.js` — PreToolUse; rewrites supported Bash commands to `lakonai …`.
 - `read-guard.js` — denies Reads of build/dep dirs & lockfiles; caps huge files.
 - `grep-guard.js` — auto-caps Grep `head_limit`.
+- `prompt-reinforce.js` — UserPromptSubmit; per-turn terse reminder.
 - `session-start.js` — update notice. `stop-hook.js` — records session usage AND
   runs the learner. `throttle.js` — rate-limits notices.
 - Hook entry points guard runtime with `if (require.main === module)` so they can
   be `require()`d in tests; the I/O shell (`main`/`readStdin`) is
   `/* istanbul ignore next */`.
+- **Installed hooks are launchers, not copies.** `claude-hook.js` writes a tiny
+  `require('module')._load(<pkg hook abs path>, null, true)` shim into
+  `~/.claude/hooks/`, so a hook's relative requires (`../filters`, `../learn`,
+  `../mode`) resolve inside the package. Never go back to flat-copying hooks that
+  require the shared graph — it breaks at runtime.
 
 ## Installer (`src/install/`)
 
-`index.js` orchestrates; `platforms.js` lists targets; `paths.js` resolves home
-via `homedir()` = `process.env.HOME || os.homedir()` (NOT bare `os.homedir()` —
-that ignores a test-set HOME under Jest). `backup.js` backs up before writing.
+`index.js` orchestrates; `platforms.js` lists targets; `claude-hook.js` writes the
+hook launchers + merges `settings.json`; `claude-commands.js` writes the
+`/lakonai:*` slash commands (gain/reset/inspect/commit/review); `paths.js` resolves
+home via `homedir()` = `process.env.HOME || os.homedir()` (NOT bare `os.homedir()`
+— that ignores a test-set HOME under Jest). `backup.js` backs up before writing.
+
+## Benchmark (`scripts/bench.js`)
+
+Runs `tests/fixtures/bench/*` through the filters and prints savings.
+`tests/bench.test.js` asserts each case clears its `minSaved` threshold — a filter
+regression fails CI.
 
 ## Testing & coverage policy (non-negotiable)
 
@@ -112,7 +139,7 @@ that ignores a test-set HOME under Jest). `backup.js` backs up before writing.
 ## File map
 
 ```
-bin/lakonai.js              CLI entry (run+filter, install, gain, inspect)
+bin/lakonai.js              CLI entry (run+filter, install, gain, inspect, mode, compress)
 src/filters/index.js        dispatch
 src/filters/{git,ls,cat,grep,find,test}.js   JS filters
 src/filters/engine.js       declarative pipeline engine
@@ -120,8 +147,11 @@ src/filters/defs.js         declarative filter definitions (data)
 src/filters/auto.js         conservative auto-learned filter
 src/filters/utils.js        stripAnsi, truncateLines, dedupConsecutive, groupByDir
 src/learn.js                auto-learning (transcript → stats → promote)
-src/hooks/*.js              Claude Code hooks
-src/install/*.js            installer
+src/mode.js                 terse intensity mode (lite/full/ultra)
+src/compress.js             memory-file compression (heuristic + --llm via claude CLI)
+src/hooks/*.js              Claude Code hooks (incl. prompt-reinforce)
+src/install/*.js            installer (hooks as launchers, slash commands)
+scripts/bench.js            compression benchmark + regression corpus
 ```
 
 When unsure, read the file before answering — never guess a path or symbol that

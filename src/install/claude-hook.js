@@ -36,6 +36,12 @@ const HOOKS = [
     event: 'SessionStart',
     matcher: null,
   },
+  {
+    basename: 'lakon-prompt-reinforce.js',
+    src: path.join(__dirname, '..', 'hooks', 'prompt-reinforce.js'),
+    event: 'UserPromptSubmit',
+    matcher: null,
+  },
 ];
 
 const SUPPORT_FILES = [
@@ -124,7 +130,13 @@ function installHook(home) {
   for (const h of HOOKS) {
     const dest = hookDest(home, h.basename);
     fs.mkdirSync(path.dirname(dest), { recursive: true });
-    fs.copyFileSync(h.src, dest);
+    // Launcher: run the packaged hook in place (as the main module) so its
+    // relative requires (../filters, ../learn, ../mode) resolve inside the
+    // package. A flat copy would break those requires.
+    fs.writeFileSync(
+      dest,
+      `#!/usr/bin/env node\n// lakonai hook launcher (generated)\nrequire('module')._load(${JSON.stringify(h.src)}, null, true);\n`
+    );
     fs.chmodSync(dest, 0o755);
     mergeHook(data, h, dest);
     installed.push(dest);
