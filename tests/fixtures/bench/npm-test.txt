@@ -1,0 +1,44 @@
+> app@1.0.0 test
+> jest
+
+PASS src/mod0.test.js
+  ✓ case 0.0 (1 ms)
+  ✓ case 0.1 (2 ms)
+  ✓ case 0.2 (3 ms)
+  ✓ case 0.3 (4 ms)
+  ✓ case 0.4 (5 ms)
+PASS src/mod1.test.js
+  ✓ case 1.0 (1 ms)
+  ✓ case 1.1 (2 ms)
+  ✓ case 1.2 (3 ms)
+  ✓ case 1.3 (4 ms)
+  ✓ case 1.4 (5 ms)
+PASS src/mod2.test.js
+  ✓ case 2.0 (1 ms)
+  ✓ case 2.1 (2 ms)
+  ✓ case 2.2 (3 ms)
+  ✓ case 2.3 (4 ms)
+  ✓ case 2.4 (5 ms)
+PASS src/mod3.test.js
+  ✓ case 3.0 (1 ms)
+  ✓ case 3.1 (2 ms)
+  ✓ case 3.2 (3 ms)
+  ✓ case 3.3 (4 ms)
+  ✓ case 3.4 (5 ms)
+PASS src/mod4.test.js
+  ✓ case 4.0 (1 ms)
+  ✓ case 4.1 (2 ms)
+  ✓ case 4.2 (3 ms)
+  ✓ case 4.3 (4 ms)
+  ✓ case 4.4 (5 ms)
+PASS src/mod5.test.js
+  ✓ case 5.0 (1 ms)
+  ✓ case 5.1 (2 ms)
+  ✓ case 5.2 (3 ms)
+  ✓ case 5.3 (4 ms)
+  ✓ case 5.4 (5 ms)
+
+Test Suites: 6 passed, 6 total
+Tests:       30 passed, 30 total
+Snapshots:   0 total
+Time:        2.1 s

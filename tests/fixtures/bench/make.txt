@@ -1,0 +1,32 @@
+make[1]: Entering directory /home/u/proj
+gcc -O2 -c src/f0.c -o build/f0.o
+
+make[1]: Leaving directory /home/u/proj
+make[1]: Entering directory /home/u/proj
+gcc -O2 -c src/f1.c -o build/f1.o
+
+make[1]: Leaving directory /home/u/proj
+make[1]: Entering directory /home/u/proj
+gcc -O2 -c src/f2.c -o build/f2.o
+
+make[1]: Leaving directory /home/u/proj
+make[1]: Entering directory /home/u/proj
+gcc -O2 -c src/f3.c -o build/f3.o
+
+make[1]: Leaving directory /home/u/proj
+make[1]: Entering directory /home/u/proj
+gcc -O2 -c src/f4.c -o build/f4.o
+
+make[1]: Leaving directory /home/u/proj
+make[1]: Entering directory /home/u/proj
+gcc -O2 -c src/f5.c -o build/f5.o
+
+make[1]: Leaving directory /home/u/proj
+make[1]: Entering directory /home/u/proj
+gcc -O2 -c src/f6.c -o build/f6.o
+
+make[1]: Leaving directory /home/u/proj
+make[1]: Entering directory /home/u/proj
+gcc -O2 -c src/f7.c -o build/f7.o
+
+make[1]: Leaving directory /home/u/proj

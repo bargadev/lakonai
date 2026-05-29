@@ -196,6 +196,8 @@ saved:    85%
 | `lakonai gain`                       | Show savings by hour / day / week / month / all-time + session totals |
 | `lakonai inspect <cmd>`              | Run once and show raw-vs-filtered (no tracking)                       |
 | `lakonai reset`                      | Wipe the savings log                                                  |
+| `lakonai mode [lite\|full\|ultra]`   | Show or set terse intensity (default `full`)                          |
+| `lakonai compress <file> [--llm] [--dry-run]` | Shrink a memory `.md` (offline heuristic, or `--llm` via your `claude` CLI) |
 | `lakonai version` / `--version` / `-v` | Print the installed lakonai version                                 |
 
 ---
@@ -229,6 +231,23 @@ conservative filter for it automatically** — no config, no manual rules. The
 auto-filter is near-lossless (collapses repeated/blank lines, truncates only
 with an announced marker) so it never hides a real error. Disable with
 `LAKON_NO_LEARN=1`.
+
+### Terse intensity + per-turn reinforcement
+
+`lakonai mode lite|full|ultra` sets how terse the model is (default `full`;
+`ultra` abbreviates and uses arrows for causality). A `UserPromptSubmit` hook
+re-injects the active rule every turn so the model doesn't drift back to verbose
+prose mid-session (opt out `LAKON_NO_REINFORCE=1`). Code, identifiers, paths and
+security warnings stay verbatim at every level.
+
+### Compress memory files
+
+`lakonai compress <file>` shrinks the markdown an agent reloads every session
+(CLAUDE.md, notes). Default is **offline and near-lossless** (collapses blank
+lines / trailing whitespace, never touches code or words). `--llm` rewrites the
+prose tersely using **your existing `claude` CLI** (`claude --print` — no separate
+API key, no new dependency); `--dry-run` previews the savings. The original is
+backed up to `<file>.bak`.
 
 ### Read tool guard (Claude Code)
 
@@ -281,7 +300,7 @@ Each profile gets its own independent install. `lakonai uninstall` / `lakonai re
 
 | Agent           | Scope    | What `lakonai install` writes                                                                          |
 |-----------------|----------|--------------------------------------------------------------------------------------------------------|
-| Claude Code¹    | global   | Rule block in `~/.claude/CLAUDE.md` + **five** hooks in `~/.claude/settings.json` (`PreToolUse`: Bash rewrite + Read guard + Grep guard; `Stop`: session-usage log; `SessionStart`: update notify) + `/lakonai:gain` `/lakonai:reset` `/lakonai:inspect` slash commands |
+| Claude Code¹    | global   | Rule block in `~/.claude/CLAUDE.md` + **six** hooks in `~/.claude/settings.json` (`PreToolUse`: Bash rewrite + Read guard + Grep guard; `Stop`: session-usage log + auto-learning; `SessionStart`: update notify; `UserPromptSubmit`: per-turn terse reinforcement) + `/lakonai:gain` `/lakonai:reset` `/lakonai:inspect` `/lakonai:commit` `/lakonai:review` slash commands |
 | Codex CLI       | global   | Rule block in `~/.codex/AGENTS.md`                                                                     |
 | Gemini CLI      | global   | Rule block in `~/.gemini/GEMINI.md`                                                                    |
 | Cursor          | project² | `.cursor/rules/lakonai.mdc` in the current dir                                                         |
@@ -358,7 +377,7 @@ npm run test:coverage:check       # enforce the coverage threshold
 node bin/lakonai.js --help
 ```
 
-Suite: **270 tests**. Coverage gate: **100% lines / 100% branches / 100% functions / 100% statements**. Zero runtime dependencies. Node ≥ 18.
+Suite: **285 tests**. Coverage gate: **100% lines / 100% branches / 100% functions / 100% statements**. Zero runtime dependencies. Node ≥ 18.
 
 ---
 

@@ -191,6 +191,51 @@ test('main: install / uninstall / revert dispatch (isolated HOME)', async () => 
   }
 });
 
+test('main: mode — show, set, and reject unknown', async () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'lakon-mode-'));
+  const prev = process.env.LAKON_HOME;
+  const prevMode = process.env.LAKON_MODE;
+  process.env.LAKON_HOME = home;
+  delete process.env.LAKON_MODE;
+  try {
+    process.argv = ['node', 'lakonai', 'mode'];
+    await withCapture(() => cli.main());
+    assert.match(out(), /lakonai mode: full/);
+
+    process.argv = ['node', 'lakonai', 'mode', 'ultra'];
+    await withCapture(() => cli.main());
+    assert.match(out(), /set to ultra/);
+
+    process.argv = ['node', 'lakonai', 'mode', 'wenyan'];
+    await withCapture(() => cli.main());
+    assert.match(out(), /unknown mode/);
+  } finally {
+    process.env.LAKON_HOME = prev;
+    if (prevMode !== undefined) process.env.LAKON_MODE = prevMode;
+  }
+});
+
+test('main: compress — dry-run report and missing-file error', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lakon-cmpcli-'));
+  const f = path.join(dir, 'm.md');
+  fs.writeFileSync(f, 'x   \n\n\n\ny\n');
+  process.argv = ['node', 'lakonai', 'compress', f, '--dry-run'];
+  await withCapture(() => cli.main());
+  assert.match(out(), /dry-run/);
+  assert.match(out(), /tokens/);
+
+  process.argv = ['node', 'lakonai', 'compress', '--llm'];
+  await withCapture(() => cli.main());
+  assert.match(err(), /missing file/);
+
+  // real write (no --dry-run) covers the written-report branch
+  const f2 = path.join(dir, 'w.md');
+  fs.writeFileSync(f2, 'p   \n\n\n\nq\n');
+  process.argv = ['node', 'lakonai', 'compress', f2];
+  await withCapture(() => cli.main());
+  assert.match(out(), /written; backup \.bak/);
+});
+
 test('maybePrintUpdateHint path via gain when an update is cached', async () => {
   const vc = require('../src/hooks/version-check');
   const orig = vc.getCachedUpdate;

@@ -172,6 +172,32 @@ async function main() {
     process.stdout.write(ok ? 'lakonai: log cleared\n' : 'lakonai: nothing to clear\n');
     return;
   }
+  if (first === 'mode') {
+    const { getMode, setMode, MODES } = require('../src/mode');
+    if (!rest.length) {
+      process.stdout.write(`lakonai mode: ${getMode()}\n`);
+      return;
+    }
+    const m = setMode(rest[0]);
+    process.stdout.write(
+      m ? `lakonai mode set to ${m}\n` : `lakonai: unknown mode "${rest[0]}" (use ${MODES.join('/')})\n`
+    );
+    return;
+  }
+  if (first === 'compress') {
+    const { compressFile } = require('../src/compress');
+    const llm = rest.includes('--llm');
+    const dryRun = rest.includes('--dry-run');
+    const file = rest.find((a) => !a.startsWith('--'));
+    if (!file) {
+      process.stderr.write('lakonai compress: missing file\n');
+      process.exit(2);
+    }
+    const r = compressFile(file, { llm, dryRun });
+    const tail = r.written ? ' [written; backup .bak]' : ' [dry-run]';
+    process.stdout.write(`${r.file}: ${r.before} → ${r.after} tokens (-${r.saved}%, ${r.mode})${tail}\n`);
+    return;
+  }
 
   runAndFilter(first, rest);
 }
