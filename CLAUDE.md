@@ -32,6 +32,20 @@ A README that overstates or lies about a feature is worse than no README — it
 burns trust. Verify the number before writing it (run the suite, grep the
 constant). Treat a stale or inaccurate README as a release-blocking bug.
 
+## Releasing (merge + CHANGELOG, no tags)
+
+The version log lives in **`CHANGELOG.md`** — there are no git tags. To cut a
+release:
+
+1. On a branch, bump the version: `npm version <patch|minor|major> --no-git-tag-version`.
+2. Add a matching `CHANGELOG.md` entry under a new `## [x.y.z] - YYYY-MM-DD` heading.
+3. Open a PR and merge it (main is protected — PRs only).
+
+On merge, the **Publish to npm** action publishes when `package.json` carries a
+new version, no-ops when the version is unchanged, and **fails** if the version
+was bumped to one that already exists on npm. Never bump the version without a
+CHANGELOG entry in the same PR.
+
 ## Testing policy — tests before commit (only at commit time)
 
 This project uses **Jest** with a coverage gate. The rule:

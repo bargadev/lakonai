@@ -1,9 +1,10 @@
 name: Publish to npm
 
-# Runs on every push to main. Because main is protected (PRs only), in practice
-# this fires when a PR is merged. It publishes only when package.json carries a
-# version that isn't on npm yet, so an ordinary merge with no version bump is a
-# safe no-op.
+# Runs on every push to main. Because main is protected (PRs only), this fires
+# when a PR is merged. Release model: merge + CHANGELOG, no tags.
+#   - version unchanged from the previous commit -> no-op (ordinary merge)
+#   - version bumped to a number not yet on npm   -> publish
+#   - version bumped to a number ALREADY on npm   -> fail (mistake, must error)
 on:
   push:
     branches: [main]
@@ -16,6 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # need the previous commit to diff package.json version
 
       - uses: actions/setup-node@v4
         with:
@@ -26,15 +29,21 @@ jobs:
 
       - run: npm test
 
-      - name: Publish if the version is new
+      - name: Publish when the version was bumped
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           NAME=$(node -p "require('./package.json').name")
-          VERSION=$(node -p "require('./package.json').version")
-          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
-            echo "::notice::$NAME@$VERSION is already on npm — nothing to publish."
+          CURRENT=$(node -p "require('./package.json').version")
+          git show HEAD^:package.json > /tmp/prev.json 2>/dev/null || echo '{}' > /tmp/prev.json
+          PREVIOUS=$(node -p "require('/tmp/prev.json').version || ''")
+
+          if [ "$CURRENT" = "$PREVIOUS" ]; then
+            echo "::notice::Version unchanged ($CURRENT) — nothing to release."
+          elif npm view "$NAME@$CURRENT" version >/dev/null 2>&1; then
+            echo "::error::package.json was bumped to $CURRENT, but $NAME@$CURRENT is already on npm. Bump to a new version."
+            exit 1
           else
-            echo "Publishing $NAME@$VERSION"
+            echo "Publishing $NAME@$CURRENT"
             npm publish --access public
           fi
