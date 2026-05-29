@@ -1,0 +1,40 @@
+name: Publish to npm
+
+# Runs on every push to main. Because main is protected (PRs only), in practice
+# this fires when a PR is merged. It publishes only when package.json carries a
+# version that isn't on npm yet, so an ordinary merge with no version bump is a
+# safe no-op.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - run: npm ci
+
+      - run: npm test
+
+      - name: Publish if the version is new
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          NAME=$(node -p "require('./package.json').name")
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "::notice::$NAME@$VERSION is already on npm — nothing to publish."
+          else
+            echo "Publishing $NAME@$VERSION"
+            npm publish --access public
+          fi
