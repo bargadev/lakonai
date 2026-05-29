@@ -66,6 +66,11 @@ async function main() {
     const data = JSON.parse(raw);
     if (!data.transcript_path) process.exit(0);
 
+    // Learn which unfiltered commands are worth auto-filtering (best effort).
+    const learn = require('../learn');
+    const { isBuiltinSupported } = require('../filters');
+    learn.analyzeTranscript(data.transcript_path, isBuiltinSupported);
+
     const usage = extractUsage(data.transcript_path);
     if (!usage) process.exit(0);
 

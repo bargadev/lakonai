@@ -89,6 +89,24 @@ test('inspectCmd filters a supported command (git)', async () => {
   assert.match(out(), /saved:/);
 });
 
+test('inspectCmd merges stderr for test runners', async () => {
+  // vitest is not installed here; the point is to exercise the stderr-merge path
+  await withCapture(() => cli.inspectCmd(['vitest']));
+  assert.match(out(), /raw:/);
+});
+
+test('runAndFilter merges stderr for a test command (npm test)', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lakon-npmtest-'));
+  fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 't', scripts: { test: 'node -e 0' } }));
+  const cwd = process.cwd();
+  process.chdir(dir);
+  try {
+    await withCapture(() => cli.runAndFilter('npm', ['test', '--silent']));
+  } finally {
+    process.chdir(cwd);
+  }
+});
+
 test('main: reset twice → second reports nothing to clear', async () => {
   process.argv = ['node', 'lakonai', 'reset'];
   await withCapture(() => cli.main());

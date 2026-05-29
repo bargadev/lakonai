@@ -32,8 +32,15 @@ test('does not rewrite already-prefixed lakonai command', () => {
 });
 
 test('does not rewrite unsupported commands', () => {
-  assert.equal(run({ tool_name: 'Bash', tool_input: { command: 'npm install' } }), '');
+  assert.equal(run({ tool_name: 'Bash', tool_input: { command: 'python script.py' } }), '');
   assert.equal(run({ tool_name: 'Bash', tool_input: { command: 'echo hello' } }), '');
+});
+
+test('rewrites newly supported commands (test runners, engine defs)', () => {
+  for (const cmd of ['npm install', 'jest', 'go test ./...', 'tsc --noEmit', 'make build', 'docker ps']) {
+    const out = run({ tool_name: 'Bash', tool_input: { command: cmd } });
+    assert.match(JSON.parse(out).hookSpecificOutput.updatedInput.command, /^lakonai /);
+  }
 });
 
 test('ignores non-Bash tools', () => {

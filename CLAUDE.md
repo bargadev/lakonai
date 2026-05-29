@@ -1,6 +1,36 @@
-# CLAUDE.md — lakonai-lib
+# CLAUDE.md — lakonai
 
 Guidance for AI agents working in this repository.
+
+## Keep the lakonai-spec agent current (always)
+
+`.claude/agents/lakonai-spec.md` is the canonical knowledge base for this
+codebase. **Whenever you change how lakonai works, update that agent in the same
+change** — its file map, dispatch order, filter layers, learning thresholds, and
+conventions must always match the code. Triggers to update it:
+
+- adding/removing a filter, engine def, or supported command;
+- changing the dispatch order, hook behavior, or the auto-learning thresholds/flow;
+- moving files or renaming exported symbols.
+
+Treat a stale agent as a bug. If you touch internals and don't update the agent,
+the change is incomplete.
+
+## Keep the README current (always)
+
+`README.md` is the public face — it must never claim something the code doesn't
+do. **Whenever you change user-facing behavior, update the README in the same
+change.** Specifically keep these in sync with reality:
+
+- the supported-command list, counts ("30 commands"), and the savings tables;
+- feature claims (auto-learning, hooks, aliases) — never advertise a removed or
+  unbuilt feature;
+- numbers that drift: test count, coverage, version, default caps/thresholds;
+- install/usage commands and flags.
+
+A README that overstates or lies about a feature is worse than no README — it
+burns trust. Verify the number before writing it (run the suite, grep the
+constant). Treat a stale or inaccurate README as a release-blocking bug.
 
 ## Testing policy — tests before commit (only at commit time)
 

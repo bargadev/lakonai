@@ -1,7 +1,7 @@
 {
   "name": "lakonai",
   "version": "0.7.1",
-  "description": "lakonai — Spartan replies for AI agents. Terse model output + filtered CLI output for Claude Code, Codex, Cursor, Windsurf, Cline, and Gemini.",
+  "description": "lakonai — save AI context tokens. Filters & compresses CLI output (git, ls, grep, find, test runners, lint/build, docker/kubectl/aws) before it reaches Claude Code, Codex, Cursor, Windsurf, Cline or Gemini — and learns to filter new commands automatically the more you use it.",
   "keywords": [
     "claude",
     "claude-code",
@@ -12,19 +12,25 @@
     "gemini",
     "llm",
     "tokens",
+    "token-savings",
     "context-window",
     "ai-coding",
-    "agent"
+    "agent",
+    "cli",
+    "output-filter",
+    "test-runner",
+    "eslint",
+    "pytest"
   ],
   "license": "MIT",
   "author": "bargadev",
-  "homepage": "https://github.com/bargadev/lakonai-lib",
+  "homepage": "https://github.com/bargadev/lakonai",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/bargadev/lakonai-lib.git"
+    "url": "git+https://github.com/bargadev/lakonai.git"
   },
   "bugs": {
-    "url": "https://github.com/bargadev/lakonai-lib/issues"
+    "url": "https://github.com/bargadev/lakonai/issues"
   },
   "type": "commonjs",
   "main": "src/filters/index.js",

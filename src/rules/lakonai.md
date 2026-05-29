@@ -52,6 +52,14 @@ For any shell command whose output you read into context, prefix it with `lakona
 | `lakonai ls -la`      | `ls -la`        |
 | `lakonai cat <file>`  | `cat <file>`    |
 | `lakonai grep -r …`   | `grep -r …`     |
+| `lakonai find …`      | `find …`        |
+| `lakonai npm test`    | `npm test`      |
+| `lakonai pytest`      | `pytest`        |
+| `lakonai tsc`         | `tsc`           |
+| `lakonai make`        | `make`          |
+
+It also compresses test runners (jest/vitest/pytest/go test/cargo test), linters
+and builds (eslint/ruff/clippy/tsc/make), package installs, and docker/kubectl/aws.
 
 Unsupported commands run unchanged through `lakonai`, so when in doubt, prefix it.
 

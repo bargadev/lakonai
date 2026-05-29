@@ -26,4 +26,56 @@ function countTokensApprox(text) {
   return text.split(/\s+/).filter(Boolean).length;
 }
 
-module.exports = { stripAnsi, truncateLines, truncateBytes, countTokensApprox };
+// Collapse runs of identical adjacent lines into one, annotated with the count:
+//   a / a / a / b  ->  a (×3) / b
+function dedupConsecutive(text) {
+  const lines = text.split('\n');
+  const out = [];
+  let prev = null;
+  let count = 0;
+  const flush = () => {
+    if (prev === null) return;
+    out.push(count > 1 ? `${prev} (×${count})` : prev);
+  };
+  for (const line of lines) {
+    if (line === prev) {
+      count++;
+    } else {
+      flush();
+      prev = line;
+      count = 1;
+    }
+  }
+  flush();
+  return out.join('\n');
+}
+
+// Group file-like lines by their directory, emitting a header per dir followed
+// by the basenames. Lines without a slash are grouped under '.'.
+function groupByDir(lines) {
+  const groups = new Map();
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const slash = trimmed.lastIndexOf('/');
+    const dir = slash === -1 ? '.' : trimmed.slice(0, slash);
+    const base = slash === -1 ? trimmed : trimmed.slice(slash + 1);
+    if (!groups.has(dir)) groups.set(dir, []);
+    groups.get(dir).push(base);
+  }
+  const out = [];
+  for (const [dir, names] of groups) {
+    out.push(`${dir}/ (${names.length})`);
+    for (const n of names) out.push(`  ${n}`);
+  }
+  return out.join('\n');
+}
+
+module.exports = {
+  stripAnsi,
+  truncateLines,
+  truncateBytes,
+  countTokensApprox,
+  dedupConsecutive,
+  groupByDir,
+};

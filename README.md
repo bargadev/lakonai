@@ -22,6 +22,8 @@
 
 <p align="center">
   One command. <strong>Three fronts</strong>: terse model output · filtered shell output · blocked junk reads.<br/>
+  Filters <strong>30 commands</strong> — git, ls, grep, find, <strong>test runners, lint/build, docker/kubectl/aws</strong> —<br/>
+  and <strong>learns to filter new ones automatically the more you use it</strong>.<br/>
   Plus session-level token tracking and one-day update notifications.<br/>
   Works across <strong>Claude Code, Codex, Cursor, Windsurf, Cline, Gemini CLI</strong>.
 </p>
@@ -37,6 +39,7 @@
 | `git diff HEAD~5`                |     13,230 |      798 | **-89%** |
 | `git log --stat -50`             |      4,845 |      439 | **-86%** |
 | `git status`                     |         17 |        1 | **-89%** |
+| `npm test` (passing suite)       |      4,451 |      358 | **-92%** |
 | `Read pnpm-lock.yaml`            |    ~56,000 | **blocked** | **-95%** |
 | `Grep` (auto `head_limit`)       |  unbounded | 30 matches | **capped** |
 
@@ -67,12 +70,14 @@ Your AI coding agent does. It opens with *"Sure! I'd be happy to help…"*, repe
 | Front                          | Wasted tokens look like…                              | lakonai fixes it by…                                                                |
 |--------------------------------|-------------------------------------------------------|-------------------------------------------------------------------------------------|
 | **Output** (the model)         | *"Great question! Let me explain…"*                   | Installing a terse-response rule. No preamble, no recap, no restating.              |
-| **Input** (your shell tools)   | `git log` dumping 1.8 k tokens of author metadata     | Wrapping `git`/`ls`/`grep`/`cat`/`tree`/`head`/`tail` and compressing before context. |
+| **Input** (your shell tools)   | `git log` dumping 1.8 k tokens of author metadata     | Wrapping **30 commands** — `git`/`ls`/`grep`/`cat`/`find`, **test runners** (jest/pytest/go/cargo), **lint/build** (tsc/eslint/ruff/make), **docker/kubectl/aws** — and compressing before context. |
 | **Reads** (file ingestion)     | Agent runs `Read` on `pnpm-lock.yaml` → 80 k of nothing | A `PreToolUse` hook on `Read` blocks lockfiles & `node_modules`, caps files >800 lines. |
 | **Search** (Grep tool)         | `Grep` returns 800 matches and you re-read every one  | A `PreToolUse` hook on `Grep` auto-caps `head_limit` at 30 with a one-shot hint.        |
 | **Analysis** (the rule)        | `Read` 5k of logs to count errors in your head        | "Think in code" — write `node -e '…filter…count'`, consume only the answer.            |
 
 Other tools stop at one front. lakonai does all three transparently — your agent doesn't have to remember anything.
+
+> **★ It gets better the more you use it.** lakonai watches your session history and, when an unfiltered command keeps showing up with heavy output, it **turns on a safe filter for that command automatically** — no config, no manual rules. Similar tools only *report* what you're missing; lakonai just fixes it. (Near-lossless: it collapses repetition and truncates with a marker, never silently dropping a line that could be an error. Opt out with `LAKON_NO_LEARN=1`.)
 
 ---
 
@@ -108,7 +113,7 @@ You'll see savings stack up immediately in `lakonai gain`.
 
 > **Worried?** Every install backs up the target file first. `lakonai revert` puts it back byte-for-byte.
 
-> **Upgrading from `lakon`?** The package was renamed to **lakonai** in 0.7.0. The `lakon` and `lak` commands still work as aliases, your `~/.lakon/` log + backups carry over untouched, and `lakonai install` rewrites your existing config block to the new brand. No migration needed.
+> **Upgrading from `lakon`?** The package was renamed to **lakonai** in 0.7.0; the legacy `lakon` / `lak` command aliases were since removed — use `lakonai`. Your `~/.lakon/` log + backups carry over untouched, and `lakonai install` rewrites your existing config block to the new brand.
 
 ---
 
@@ -121,7 +126,9 @@ lakonai git status        # compressed git status
 lakonai git log -50       # one line per commit (hash + subject)
 lakonai git diff          # only +/- lines, no noise
 lakonai ls -la            # size + name only
-lakonai grep -r foo src/  # truncates at 40 matches
+lakonai grep -r foo src/  # truncates at 15 matches
+lakonai npm test          # passing suite collapses to its summary line
+lakonai find . -name '*.ts'  # groups matches by directory
 ```
 
 Unsupported commands run unchanged.
@@ -204,8 +211,24 @@ saved:    85%
 | `cat`                  | Collapses blank-line runs, cap 200 lines                          |
 | `head` / `tail`        | Cap 50 lines                                                      |
 | `grep` / `rg` / `ag`   | Cap 15 matches with "tighten the pattern" hint                    |
+| `find`                 | Groups matched paths by directory, drops permission-denied noise  |
+| test runners           | jest/vitest/mocha/pytest/ava, `npm/pnpm/yarn/bun test`, `go test`, `cargo test` — collapse passes, keep failures + summary |
+| lint / build           | `tsc`, `eslint`, `ruff`, `cargo clippy`, `make` — strip noise, "ok" when clean |
+| pkg / cloud            | `npm/pnpm/yarn/bun install`, `diff`, `docker`, `kubectl`, `aws` — strip progress/noise, cap |
+
+The last three groups are powered by a declarative engine (`src/filters/defs.js`)
+plus a couple of structured filters; adding a new command is usually one data entry.
 
 Unsupported commands run unchanged (passthrough), still tracked at 0 % savings.
+
+### Gets better the more you use it (auto-learning)
+
+lakonai watches your session history (the Claude Code transcript) and, when an
+**unfiltered** command keeps showing up with heavy output, it **enables a
+conservative filter for it automatically** — no config, no manual rules. The
+auto-filter is near-lossless (collapses repeated/blank lines, truncates only
+with an announced marker) so it never hides a real error. Disable with
+`LAKON_NO_LEARN=1`.
 
 ### Read tool guard (Claude Code)
 
@@ -326,16 +349,16 @@ Every token your agent emits or reads is paid for — in latency, in money, in c
 ## Development
 
 ```bash
-git clone https://github.com/bargadev/lakonai-lib
-cd lakonai-lib
-npm install                       # only devDeps (c8 for coverage); zero runtime deps
-node --test tests/                # run the suite
+git clone https://github.com/bargadev/lakonai
+cd lakonai
+npm install                       # only devDeps (jest for tests/coverage); zero runtime deps
+npm test                          # run the Jest suite
 npm run test:coverage             # text + HTML coverage report (coverage/index.html)
-npm run test:coverage:check       # fail if any metric drops below 100%
+npm run test:coverage:check       # enforce the coverage threshold
 node bin/lakonai.js --help
 ```
 
-Suite: **187 tests**. Coverage gate: **100% lines / 100% branches / 100% functions / 100% statements**. Zero runtime dependencies. Node ≥ 18.
+Suite: **270 tests**. Coverage gate: **100% lines / 100% branches / 100% functions / 100% statements**. Zero runtime dependencies. Node ≥ 18.
 
 ---
 

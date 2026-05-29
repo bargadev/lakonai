@@ -72,4 +72,21 @@ function filter(raw, opts = {}) {
   return truncateLines(compact || 'tests: ok', max);
 }
 
-module.exports = { filter, isAllPass, pickSummary };
+// Direct test-runner binaries (always a test invocation).
+const TEST_BINS = new Set(['jest', 'vitest', 'mocha', 'pytest', 'py.test', 'ava']);
+// Package-manager / toolchain front-ends that run tests via a subcommand.
+const TEST_FIRST_WORDS = new Set([...TEST_BINS, 'npm', 'pnpm', 'yarn', 'bun', 'go', 'cargo']);
+
+// Decide whether `<cmd> <args...>` is a test run whose output test.filter handles.
+function isTestCommand(cmd, args = []) {
+  if (TEST_BINS.has(cmd)) return true;
+  const a = args.filter((x) => !x.startsWith('-'));
+  if (cmd === 'go') return a[0] === 'test';
+  if (cmd === 'cargo') return a[0] === 'test' || a[0] === 'nextest';
+  if (cmd === 'npm' || cmd === 'pnpm' || cmd === 'yarn' || cmd === 'bun') {
+    return a[0] === 'test' || a[0] === 't' || (a[0] === 'run' && a[1] === 'test');
+  }
+  return false;
+}
+
+module.exports = { filter, isAllPass, pickSummary, isTestCommand, TEST_FIRST_WORDS };

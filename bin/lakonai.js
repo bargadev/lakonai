@@ -2,7 +2,7 @@
 'use strict';
 
 const { spawnSync } = require('child_process');
-const { filterCommand, isSupported, countTokensApprox } = require('../src/filters');
+const { filterCommand, isSupported, needsStderr, countTokensApprox } = require('../src/filters');
 const { install, uninstall, revert, listPlatforms, backupsReport } = require('../src/install');
 const tracking = require('../src/tracking');
 const versionCheck = require('../src/hooks/version-check');
@@ -29,7 +29,11 @@ Usage:
   lakonai version            Print the installed lakonai version
   lakonai --help             This help
 
-Supported filters: git (log/status/diff/show), ls, tree, cat, head, tail, grep, rg, ag.
+Supported filters:
+  files/search   git (log/status/diff/show), ls, tree, cat, head, tail, grep, rg, ag, find
+  test runners   jest, vitest, mocha, pytest, ava; npm/pnpm/yarn/bun test, go test, cargo test
+  lint/build     tsc, eslint, ruff, cargo clippy, make
+  pkg/cloud      npm/pnpm/yarn/bun install, diff, docker, kubectl, aws
 Unsupported commands run unchanged (passthrough, still tracked as 0% savings).
 
 Multi-profile Claude Code (e.g. claude-my / claude-arco wrappers):
@@ -42,13 +46,15 @@ Update notifications:
 `;
 
 function runAndFilter(cmd, args) {
-  const child = spawnSync(cmd, args, { encoding: 'utf8', stdio: ['inherit', 'pipe', 'inherit'] });
+  const merge = needsStderr(cmd, args);
+  const stdio = merge ? ['inherit', 'pipe', 'pipe'] : ['inherit', 'pipe', 'inherit'];
+  const child = spawnSync(cmd, args, { encoding: 'utf8', stdio });
   if (child.error) {
     process.stderr.write(`lakonai: ${child.error.message}\n`);
     process.exit(127);
   }
-  /* istanbul ignore next */
-  const raw = child.stdout || '';
+  /* istanbul ignore next -- defensive empty-stream fallbacks */
+  const raw = merge ? (child.stdout || '') + (child.stderr || '') : child.stdout || '';
   const filtered = isSupported(cmd) ? filterCommand(cmd, args, raw) : raw;
   process.stdout.write(filtered);
   /* istanbul ignore next */
@@ -71,9 +77,10 @@ function inspectCmd(rest) {
     process.exit(2);
   }
   const [cmd, ...args] = rest;
+  const merge = needsStderr(cmd, args);
   const child = spawnSync(cmd, args, { encoding: 'utf8' });
-  /* istanbul ignore next */
-  const raw = child.stdout || '';
+  /* istanbul ignore next -- defensive empty-stream fallbacks */
+  const raw = merge ? (child.stdout || '') + (child.stderr || '') : child.stdout || '';
   const filtered = isSupported(cmd) ? filterCommand(cmd, args, raw) : raw;
   const rawTokens = countTokensApprox(raw);
   const newTokens = countTokensApprox(filtered);

@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 'use strict';
 
-const FILTERED_CMDS = new Set([
-  'git', 'ls', 'tree', 'cat', 'head', 'tail', 'grep', 'rg', 'ag',
-]);
+const { supportedFirstWords } = require('../filters');
+
+const FILTERED_CMDS = supportedFirstWords();
 
 function rewriteIfNeeded(command) {
   if (typeof command !== 'string') return null;
