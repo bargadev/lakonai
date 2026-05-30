@@ -6,6 +6,24 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-05-30
+
+### Added
+- **Universal PATH shim** — `lakonai shim` (and `lakonai shim --off`). Makes
+  shell-output filtering **automatic on every agent**, not just Claude Code:
+  it drops executable wrappers for `ls`/`grep`/`rg`/`ag`/`find`/`cat`/`tree`/`head`
+  into `~/.lakon/shim/` and prepends that dir to PATH in your shell rc, so any
+  agent (Codex, Cursor, Windsurf, Cline, Gemini CLI) that runs those commands
+  through a shell gets them routed through lakonai — no hook API, no model
+  cooperation. `git`/`tail` are excluded (editors / streaming); recursion is
+  prevented by stripping the shim dir from PATH when lakonai spawns the real
+  binary (`pathWithoutShim`). Opt-in (it edits your shell rc); only reaches
+  agents that inherit your shell's PATH. (`src/install/shim.js`.)
+- The honest capability matrix now shows shell filtering as automatic on all six
+  agents via the shim. Read/Grep guards + auto-learning remain Claude-Code-only
+  (they act on the agent's own tool calls, which needs a call-rewriting hook —
+  today only Claude Code's; Codex is blocked upstream, see openai/codex#18491).
+
 ## [0.12.1] - 2026-05-30
 
 ### Changed

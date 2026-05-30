@@ -31,6 +31,12 @@ Usage:
   lakonai revert-memory <file>
                              Restore <file> from its .original.md backup.
 
+  lakonai shim [--off]       Enable (or disable) the universal PATH shim — makes
+                             ls/grep/rg/ag/find/cat/tree/head filtering AUTOMATIC
+                             for EVERY agent (Codex/Cursor/Windsurf/Cline/Gemini),
+                             not just the ones with a hook API. Prepends
+                             ~/.lakon/shim to PATH in your shell rc.
+
   lakonai gain               Show token savings (hour / day / week / month / all)
   lakonai doctor             Per-platform health: CLI on PATH, rule, hooks
   lakonai version            Print the installed lakonai version
@@ -59,7 +65,11 @@ Update notifications:
 function runAndFilter(cmd, args) {
   const merge = needsStderr(cmd, args);
   const stdio = merge ? ['inherit', 'pipe', 'pipe'] : ['inherit', 'pipe', 'inherit'];
-  const child = spawnSync(cmd, args, { encoding: 'utf8', stdio });
+  // Strip the shim dir from PATH so spawning `cmd` resolves the real system
+  // binary, not the lakonai shim that may have invoked us (prevents recursion).
+  const { pathWithoutShim } = require('../src/install/shim');
+  const env = { ...process.env, PATH: pathWithoutShim(process.env) };
+  const child = spawnSync(cmd, args, { encoding: 'utf8', stdio, env });
   if (child.error) {
     process.stderr.write(`lakonai: ${child.error.message}\n`);
     process.exit(127);
@@ -80,6 +90,31 @@ function runAndFilter(cmd, args) {
 
   /* istanbul ignore next */
   process.exit(child.status ?? 0);
+}
+
+function runShim(args) {
+  const shim = require('../src/install/shim');
+  const off = args.includes('--off');
+  if (off) {
+    const { touched } = shim.uninstall();
+    process.stdout.write(`✅ shim removed (${shim.shimDir()})\n`);
+    if (touched.length) process.stdout.write(`   cleaned PATH block from: ${touched.join(', ')}\n`);
+    process.stdout.write('   Restart your shell (or your agent) for it to take effect.\n');
+    return;
+  }
+  const { dir, touched } = shim.install();
+  process.stdout.write(
+    `✅ universal shim enabled — ${shim.WRAPPED.join('/')} now filtered for ANY agent that inherits PATH.\n` +
+      `   shims: ${dir}\n`
+  );
+  if (touched.length) {
+    process.stdout.write(`   PATH prepended in: ${touched.join(', ')}\n`);
+  } else {
+    process.stdout.write(`   PATH block already present.\n`);
+  }
+  process.stdout.write(
+    '   Restart your shell (or your agent) for it to take effect. Disable: `lakonai shim --off`.\n'
+  );
 }
 
 function runMemory(cmd, args) {
@@ -177,6 +212,10 @@ async function main() {
   }
   if (first === 'compress-memory' || first === 'revert-memory') {
     runMemory(first, rest);
+    return;
+  }
+  if (first === 'shim') {
+    runShim(rest);
     return;
   }
   if (first === 'gain' || first === 'stats') {

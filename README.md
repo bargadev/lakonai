@@ -32,16 +32,16 @@
 
 ## At a glance — measured savings
 
-| Command                          | Raw tokens | Filtered | Saved   |
-|----------------------------------|-----------:|---------:|--------:|
-| `git log -p -10`                 |     10,497 |       78 | **-94%** |
-| `ls -laR` (deep directory)       |     23,624 |      117 | **-94%** |
-| `git diff HEAD~5`                |     13,230 |      798 | **-89%** |
-| `git log --stat -50`             |      4,845 |      439 | **-86%** |
-| `git status`                     |         17 |        1 | **-89%** |
-| `npm test` (passing suite)       |      4,451 |      358 | **-92%** |
-| `Read pnpm-lock.yaml`            |    ~56,000 | **blocked** | **-95%** |
-| `Grep` (auto `head_limit`)       |  unbounded | 30 matches | **capped** |
+| Command                    | Raw tokens |    Filtered |      Saved |
+| -------------------------- | ---------: | ----------: | ---------: |
+| `git log -p -10`           |     10,497 |          78 |   **-94%** |
+| `ls -laR` (deep directory) |     23,624 |         117 |   **-94%** |
+| `git diff HEAD~5`          |     13,230 |         798 |   **-89%** |
+| `git log --stat -50`       |      4,845 |         439 |   **-86%** |
+| `git status`               |         17 |           1 |   **-89%** |
+| `npm test` (passing suite) |      4,451 |         358 |   **-92%** |
+| `Read pnpm-lock.yaml`      |    ~56,000 | **blocked** |   **-95%** |
+| `Grep` (auto `head_limit`) |  unbounded |  30 matches | **capped** |
 
 Conservative numbers — peaks go higher in practice. Run `lakonai gain` to see your own savings stack up.
 
@@ -51,15 +51,15 @@ Conservative numbers — peaks go higher in practice. Run `lakonai gain` to see 
 
 In 346 BC, Philip II of Macedon — father of Alexander the Great — sent the Spartans a message:
 
-> *"If I invade Lakonía, I will raze your cities to the ground."*
+> _"If I invade Lakonía, I will raze your cities to the ground."_
 
 The Spartans replied with a single word:
 
-> *"If."*
+> _"If."_
 
 That region was **Lakonía**. Its people gave the English language the word **laconic** — using as few words as possible. They didn't waste breath, didn't waste arrows, didn't waste anything.
 
-Your AI coding agent does. It opens with *"Sure! I'd be happy to help…"*, repeats your question back, and explains what the diff already shows. It reads `git log` in full when one line per commit would do. Every wasted token is a soldier you didn't need to send.
+Your AI coding agent does. It opens with _"Sure! I'd be happy to help…"_, repeats your question back, and explains what the diff already shows. It reads `git log` in full when one line per commit would do. Every wasted token is a soldier you didn't need to send.
 
 **lakonai trims both sides.**
 
@@ -67,22 +67,23 @@ Your AI coding agent does. It opens with *"Sure! I'd be happy to help…"*, repe
 
 ## Four fronts. One install.
 
-| Front                          | Wasted tokens look like…                              | lakonai fixes it by…                                                                |
-|--------------------------------|-------------------------------------------------------|-------------------------------------------------------------------------------------|
-| **Output** (the model)         | *"Great question! Let me explain…"*                   | Installing a terse-response rule. No preamble, no recap, no restating.              |
-| **Input** (your shell tools)   | `git log` dumping 1.8 k tokens of author metadata     | Wrapping **30 commands** — `git`/`ls`/`grep`/`cat`/`find`, **test runners** (jest/pytest/go/cargo), **lint/build** (tsc/eslint/ruff/make), **docker/kubectl/aws** — and compressing before context. |
-| **Reads** (file ingestion)     | Agent runs `Read` on `pnpm-lock.yaml` → 80 k of nothing | A `PreToolUse` hook on `Read` blocks lockfiles & `node_modules`, caps files >800 lines. |
-| **Search** (Grep tool)         | `Grep` returns 800 matches and you re-read every one  | A `PreToolUse` hook on `Grep` auto-caps `head_limit` at 30 with a one-shot hint.        |
-| **Context** (every session)    | MCP tool catalogs + your `CLAUDE.md`, re-paid every single session | **Auto-compressing MCP catalogs** on install; **opt-in `compress-memory`** for your memory files. |
-| **Analysis** (the rule)        | `Read` 5k of logs to count errors in your head        | "Think in code" — write `node -e '…filter…count'`, consume only the answer.            |
+| Front                        | Wasted tokens look like…                                           | lakonai fixes it by…                                                                                                                                                                                |
+| ---------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Output** (the model)       | _"Great question! Let me explain…"_                                | Installing a terse-response rule. No preamble, no recap, no restating.                                                                                                                              |
+| **Input** (your shell tools) | `git log` dumping 1.8 k tokens of author metadata                  | Wrapping **30 commands** — `git`/`ls`/`grep`/`cat`/`find`, **test runners** (jest/pytest/go/cargo), **lint/build** (tsc/eslint/ruff/make), **docker/kubectl/aws** — and compressing before context. |
+| **Reads** (file ingestion)   | Agent runs `Read` on `pnpm-lock.yaml` → 80 k of nothing            | A `PreToolUse` hook on `Read` blocks lockfiles & `node_modules`, caps files >800 lines.                                                                                                             |
+| **Search** (Grep tool)       | `Grep` returns 800 matches and you re-read every one               | A `PreToolUse` hook on `Grep` auto-caps `head_limit` at 30 with a one-shot hint.                                                                                                                    |
+| **Context** (every session)  | MCP tool catalogs + your `CLAUDE.md`, re-paid every single session | **Auto-compressing MCP catalogs** on install; **opt-in `compress-memory`** for your memory files.                                                                                                   |
+| **Analysis** (the rule)      | `Read` 5k of logs to count errors in your head                     | "Think in code" — write `node -e '…filter…count'`, consume only the answer.                                                                                                                         |
 
 Most tools stop at one front. lakonai works all four transparently — your agent doesn't have to remember anything.
 
 > **Two that are easy to miss:**
-> - **MCP catalogs, compressed automatically.** Connect MCP servers and their tool/prompt/resource *descriptions* load into context every session. On install, lakonai wraps each stdio server and shrinks those descriptions offline — no manual config (caveman's equivalent is hand-wired). Reversible; opt-out `LAKON_NO_MCP=1`.
-> - **Your `CLAUDE.md`, compressed on command — no API key.** `lakonai compress-memory CLAUDE.md` rewrites your memory file using **a local AI CLI you already have** (`claude`/`gemini`/`codex`/`cursor-agent`). Backs up first, validates every code span / path / URL survives byte-for-byte. *(new in 0.12.0)*
+>
+> - **MCP catalogs, compressed automatically.** Connect MCP servers and their tool/prompt/resource _descriptions_ load into context every session. On install, lakonai wraps each stdio server and shrinks those descriptions offline — no manual config (caveman's equivalent is hand-wired). Reversible; opt-out `LAKON_NO_MCP=1`.
+> - **Your `CLAUDE.md`, compressed on command — no API key.** `lakonai compress-memory CLAUDE.md` rewrites your memory file using **a local AI CLI you already have** (`claude`/`gemini`/`codex`/`cursor-agent`). Backs up first, validates every code span / path / URL survives byte-for-byte. _(new in 0.12.0)_
 
-> **★ It gets better the more you use it.** lakonai watches your session history and, when an unfiltered command keeps showing up with heavy output, it **turns on a safe filter for that command automatically** — no config, no manual rules. Similar tools only *report* what you're missing; lakonai just fixes it. (Near-lossless: it collapses repetition and truncates with a marker, never silently dropping a line that could be an error. Opt out with `LAKON_NO_LEARN=1`.)
+> **★ It gets better the more you use it.** lakonai watches your session history and, when an unfiltered command keeps showing up with heavy output, it **turns on a safe filter for that command automatically** — no config, no manual rules. Similar tools only _report_ what you're missing; lakonai just fixes it. (Near-lossless: it collapses repetition and truncates with a marker, never silently dropping a line that could be an error. Opt out with `LAKON_NO_LEARN=1`.)
 
 ---
 
@@ -115,18 +116,39 @@ From the next session forward your agent:
 
 You'll see savings stack up immediately in `lakonai gain`.
 
+### Make shell filtering automatic on _every_ agent (`lakonai shim`)
+
+The hooks above are Claude-Code-only — they're the only platform whose hook API
+can transparently rewrite a tool call. To get **automatic** shell-output
+filtering on Codex, Cursor, Windsurf, Cline and Gemini CLI too, run:
+
+```bash
+lakonai shim          # prepend ~/.lakon/shim to PATH; lakonai shim --off to undo
+```
+
+This drops tiny executable wrappers for `ls`/`grep`/`rg`/`ag`/`find`/`cat`/`tree`/`head`
+into `~/.lakon/shim/` and prepends that dir to your shell's PATH. Now **any** agent
+that runs one of those commands through a shell gets its output filtered through
+lakonai — no hook API, no model cooperation. `git` is deliberately excluded (its
+subcommands open editors / stream), and the wrappers only shadow read-only,
+single-shot commands so they can never break an interactive invocation.
+
+It's **opt-in** because it edits your shell rc (`.zshrc`/`.bashrc`) and shadows
+system commands on PATH. Caveat: it only reaches agents that inherit your shell's
+PATH (terminal-launched CLIs do; some GUI apps with their own environment may not).
+
 ### Compress a memory file (opt-in)
 
-Your `CLAUDE.md` (and other memory/notes) costs tokens **every session**. `lakonai compress-memory <file>` rewrites it tersely in place using **a local AI CLI you already have** — no API key to set up. A model rephrases and merges the prose (far higher savings than a regex pass: ~35% vs ~8% on a terse file), while headings, tables, fenced code, inline code, paths and URLs are preserved byte-for-byte.
+Your `CLAUDE.md` (and other memory/notes) costs tokens **every session**. `lakonai compress-memory <file>` rewrites it tersely in place using **a local AI CLI you already have** — no API key to set up. A model rephrases and merges the prose (far higher savings than a regex pass — measured **~59%** on a verbose file, **~2%** on an already-terse one), while headings, tables, fenced code, inline code, paths and URLs are preserved byte-for-byte.
 
 It auto-detects, in order, whichever agent CLI is on your PATH:
 
-| CLI binary | Platform | Headless call |
-|---|---|---|
-| `claude` | Claude Code | `claude --print` |
-| `gemini` | Gemini CLI | `gemini -p` |
-| `codex` | Codex | `codex exec -` |
-| `cursor-agent` | Cursor | `cursor-agent -p` |
+| CLI binary     | Platform    | Headless call     |
+| -------------- | ----------- | ----------------- |
+| `claude`       | Claude Code | `claude --print`  |
+| `gemini`       | Gemini CLI  | `gemini -p`       |
+| `codex`        | Codex       | `codex exec -`    |
+| `cursor-agent` | Cursor      | `cursor-agent -p` |
 
 (Windsurf and Cline ship no headless one-shot CLI, so on those you just use whichever of the above you also have. Force a specific one with `LAKONAI_MEM_CLI=gemini`; pick a model with `LAKONAI_MEM_MODEL`.)
 
@@ -189,34 +211,37 @@ filters do. Set `LAKON_COLOR=1`/`0` (or `NO_COLOR=1`) to force/disable ANSI colo
 After `lakonai install`, everything is automatic — you rarely need anything but
 `gain` (to see the savings) and `doctor` (to check it's active).
 
-| Command                              | What it does                                                          |
-|--------------------------------------|-----------------------------------------------------------------------|
-| `lakonai install [--here] [--only <p>]` | Install rule + hooks (globals by default; `--here` adds per-project) |
-| `lakonai uninstall`                  | Strip the lakonai block from each config (keeps your other content)   |
-| `lakonai revert [--only <p>]`        | Restore each config to its pre-install state from backup              |
-| `lakonai backups`                    | Show backup history per platform                                      |
-| `lakonai gain`                       | Show savings by window + top commands (and a sample benchmark before you have data) |
-| `lakonai doctor`                     | Per-platform health: CLI on PATH, rule installed, hooks registered    |
-| `lakonai <cmd> [args]`               | (internal) Run a command, filter its output, track savings            |
-| `lakonai version` / `--version` / `-v` | Print the installed lakonai version                                 |
+| Command                                 | What it does                                                                        |
+| --------------------------------------- | ----------------------------------------------------------------------------------- |
+| `lakonai install [--here] [--only <p>]` | Install rule + hooks (globals by default; `--here` adds per-project)                |
+| `lakonai uninstall`                     | Strip the lakonai block from each config (keeps your other content)                 |
+| `lakonai revert [--only <p>]`           | Restore each config to its pre-install state from backup                            |
+| `lakonai backups`                       | Show backup history per platform                                                    |
+| `lakonai shim [--off]`                  | Enable/disable the universal PATH shim — automatic shell filtering on _every_ agent |
+| `lakonai compress-memory <file>`        | Shrink an authored memory file with your local agent CLI (opt-in, backed up, validated) |
+| `lakonai revert-memory <file>`          | Restore a memory file from its `.original.md` backup                                |
+| `lakonai gain`                          | Show savings by window + top commands (and a sample benchmark before you have data) |
+| `lakonai doctor`                        | Per-platform health: CLI on PATH, rule installed, hooks registered                  |
+| `lakonai <cmd> [args]`                  | (internal) Run a command, filter its output, track savings                          |
+| `lakonai version` / `--version` / `-v`  | Print the installed lakonai version                                                 |
 
 ---
 
 ## Supported filters
 
-| Command                | What it does                                                      |
-|------------------------|-------------------------------------------------------------------|
-| `git log`              | One line per commit (`<hash> <subject>`), capped at 50            |
-| `git status`           | Drops hint paragraphs, separates changed vs untracked             |
-| `git diff` / `show`    | Only `+`/`-`/`@@` lines, drops `index`/`---`/`+++`, cap 120 lines |
-| `ls -la` / `tree`      | `<size>\t<name>` (drops perms / dates / link targets), cap 60     |
-| `cat`                  | Collapses blank-line runs, cap 200 lines                          |
-| `head` / `tail`        | Cap 50 lines                                                      |
-| `grep` / `rg` / `ag`   | Cap 15 matches with "tighten the pattern" hint                    |
-| `find`                 | Groups matched paths by directory, drops permission-denied noise  |
-| test runners           | jest/vitest/mocha/pytest/ava, `npm/pnpm/yarn/bun test`, `go test`, `cargo test` — collapse passes, keep failures + summary |
-| lint / build           | `tsc`, `eslint`, `ruff`, `cargo clippy`, `make` — strip noise, "ok" when clean |
-| pkg / cloud            | `npm/pnpm/yarn/bun install`, `diff`, `docker`, `kubectl`, `aws` — strip progress/noise, cap |
+| Command              | What it does                                                                                                               |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `git log`            | One line per commit (`<hash> <subject>`), capped at 50                                                                     |
+| `git status`         | Drops hint paragraphs, separates changed vs untracked                                                                      |
+| `git diff` / `show`  | Only `+`/`-`/`@@` lines, drops `index`/`---`/`+++`, cap 120 lines                                                          |
+| `ls -la` / `tree`    | `<size>\t<name>` (drops perms / dates / link targets), cap 60                                                              |
+| `cat`                | Collapses blank-line runs, cap 200 lines                                                                                   |
+| `head` / `tail`      | Cap 50 lines                                                                                                               |
+| `grep` / `rg` / `ag` | Cap 15 matches with "tighten the pattern" hint                                                                             |
+| `find`               | Groups matched paths by directory, drops permission-denied noise                                                           |
+| test runners         | jest/vitest/mocha/pytest/ava, `npm/pnpm/yarn/bun test`, `go test`, `cargo test` — collapse passes, keep failures + summary |
+| lint / build         | `tsc`, `eslint`, `ruff`, `cargo clippy`, `make` — strip noise, "ok" when clean                                             |
+| pkg / cloud          | `npm/pnpm/yarn/bun install`, `diff`, `docker`, `kubectl`, `aws` — strip progress/noise, cap                                |
 
 The last three groups are powered by a declarative engine (`src/filters/defs.js`)
 plus a couple of structured filters; adding a new command is usually one data entry.
@@ -272,7 +297,7 @@ If you use wrapper aliases like `claude-my=CLAUDE_CONFIG_DIR=$HOME/.claude-my cl
 
 ```bash
 CLAUDE_CONFIG_DIR=$HOME/.claude-my   lakonai install
-CLAUDE_CONFIG_DIR=$HOME/.claude-arco lakonai install
+CLAUDE_CONFIG_DIR=$HOME/.claude-company lakonai install
 ```
 
 Each profile gets its own independent install. `lakonai uninstall` / `lakonai revert` respect the same env var.
@@ -281,33 +306,39 @@ Each profile gets its own independent install. `lakonai uninstall` / `lakonai re
 
 ## Supported AI agents
 
-| Agent           | Scope    | What `lakonai install` writes                                                                          |
-|-----------------|----------|--------------------------------------------------------------------------------------------------------|
-| Claude Code¹    | global   | Rule block in `~/.claude/CLAUDE.md` + **five** hooks in `~/.claude/settings.json` (`PreToolUse`: Bash rewrite + Read guard + Grep guard; `Stop`: session-usage log + auto-learning; `SessionStart`: update notify) + `/lakonai:gain` slash command |
-| Codex CLI       | global   | Rule block in `~/.codex/AGENTS.md`                                                                     |
-| Gemini CLI      | global   | Rule block in `~/.gemini/GEMINI.md`                                                                    |
-| Cursor          | project² | `.cursor/rules/lakonai.mdc` in the current dir                                                         |
-| Windsurf        | project² | `.windsurf/rules/lakonai.md` in the current dir                                                        |
-| Cline           | project² | `.clinerules/lakonai.md` in the current dir                                                            |
+| Agent        | Scope    | What `lakonai install` writes                                                                                                                                                                                                                      |
+| ------------ | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Claude Code¹ | global   | Rule block in `~/.claude/CLAUDE.md` + **five** hooks in `~/.claude/settings.json` (`PreToolUse`: Bash rewrite + Read guard + Grep guard; `Stop`: session-usage log + auto-learning; `SessionStart`: update notify) + `/lakonai:gain` slash command |
+| Codex CLI    | global   | Rule block in `~/.codex/AGENTS.md`                                                                                                                                                                                                                 |
+| Gemini CLI   | global   | Rule block in `~/.gemini/GEMINI.md`                                                                                                                                                                                                                |
+| Cursor       | project² | `.cursor/rules/lakonai.mdc` in the current dir                                                                                                                                                                                                     |
+| Windsurf     | project² | `.windsurf/rules/lakonai.md` in the current dir                                                                                                                                                                                                    |
+| Cline        | project² | `.clinerules/lakonai.md` in the current dir                                                                                                                                                                                                        |
 
 ### What each agent actually gets (honest capability matrix)
 
-The powerful input-side features (shell-output filtering, Read/Grep guards,
-auto-learning) are **hooks — they run on Claude Code only**. Everywhere else,
-lakonai delivers the terse rule and shell filtering happens by **the model
-prefixing `lakonai`** (the rule tells it to). Honest matrix:
+Shell-output **filtering is automatic on every agent** once you run `lakonai
+shim` (see below) — it routes commands through lakonai at the PATH level, so no
+hook API and no model cooperation is needed. The other input-side features
+(Read/Grep guards, auto-learning) act on the agent's *own* tool calls, so they
+still require a tool-interception hook — which today only Claude Code exposes
+with the ability to rewrite a call. Honest matrix:
 
-| Agent       | Terse rule | Shell filter        | Read/Grep guard | Auto-learning |
-|-------------|:---------:|---------------------|:---------------:|:-------------:|
-| Claude Code | ✅ | ✅ automatic (hook)   | ✅ | ✅ |
-| Codex CLI   | ✅ | ⚠️ via rule (prefix) | ❌ | ❌ |
-| Cursor      | ✅ | ⚠️ via rule (prefix) | ❌ (rule) | ❌ |
-| Windsurf    | ✅ | ⚠️ via rule (prefix) | ❌ (rule) | ❌ |
-| Cline       | ✅ | ⚠️ via rule (prefix) | ❌ (rule) | ❌ |
-| Gemini CLI  | ✅ | ⚠️ via rule (prefix) | ❌ (rule) | ❌ |
+| Agent       | Terse rule | Shell filter            | Read/Grep guard | Auto-learning |
+| ----------- | :--------: | ----------------------- | :-------------: | :-----------: |
+| Claude Code |     ✅     | ✅ automatic (hook)     |       ✅        |      ✅       |
+| Codex CLI   |     ✅     | ✅ automatic (shim¹)    |   ❌ (upstream²) |      ❌       |
+| Cursor      |     ✅     | ✅ automatic (shim¹)    |   ⚠️ block-only³ |      ❌       |
+| Windsurf    |     ✅     | ✅ automatic (shim¹)    |       ❌        |      ❌       |
+| Cline       |     ✅     | ✅ automatic (shim¹)    |       ❌        |      ❌       |
+| Gemini CLI  |     ✅     | ✅ automatic (shim¹)    |   ❌ (buildable⁴)|      ❌       |
 
-⚠️ = the model has to cooperate (prefix `lakonai`). Run `lakonai doctor` to see,
-per platform, what's actually active on your machine.
+Run `lakonai doctor` to see, per platform, what's actually active on your machine.
+
+¹ `lakonai shim` prepends `~/.lakon/shim` to PATH so `ls`/`grep`/`rg`/`ag`/`find`/`cat`/`tree`/`head` filter automatically for any agent that runs them through a shell (opt-in — it edits your shell rc; `git` is excluded for safety). Without it, those commands filter only when the model prefixes `lakonai` itself.
+² Codex's hook can block a tool call but [can't yet rewrite its input](https://github.com/openai/codex/issues/18491), so the Read/Grep guard can't be made automatic there yet.
+³ Cursor's `beforeReadFile` hook can deny a read but not filter/cap its contents.
+⁴ Gemini's `BeforeTool` hook *can* rewrite/cap a tool call; a Gemini guard installer is planned but not shipped (needs validation against the real CLI schema).
 
 ¹ "Claude Code" covers **every** Claude Code frontend — terminal CLI, VS Code extension, JetBrains plugin, desktop app. All read the same `~/.claude/CLAUDE.md` + `~/.claude/settings.json`, so one install lights up all of them.
 
@@ -345,23 +376,23 @@ Override the location with `LAKON_HOME=/path`. Disable per-command logging with 
 
 ## Configuration
 
-| Env var                 | Effect                                                                       |
-|-------------------------|------------------------------------------------------------------------------|
-| `LAKON_HOME`            | Where to keep the log + backups + version cache (default `~/.lakon`)         |
-| `LAKON_NO_TRACK`        | Set to `1` to disable per-command logging                                    |
-| `LAKON_NO_UPDATE_CHECK` | Set to `1` to disable the `SessionStart` npm check + terminal hint           |
-| `LAKON_REGISTRY_URL`    | Override the npm registry URL used by the update check (testing)             |
-| `LAKON_COLOR`           | `1` forces ANSI colors in `lakonai gain`; `0` disables; unset = TTY auto-detect |
-| `NO_COLOR`              | Standard. Disables ANSI colors when set to any non-empty value.              |
+| Env var                 | Effect                                                                                                                                 |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `LAKON_HOME`            | Where to keep the log + backups + version cache (default `~/.lakon`)                                                                   |
+| `LAKON_NO_TRACK`        | Set to `1` to disable per-command logging                                                                                              |
+| `LAKON_NO_UPDATE_CHECK` | Set to `1` to disable the `SessionStart` npm check + terminal hint                                                                     |
+| `LAKON_REGISTRY_URL`    | Override the npm registry URL used by the update check (testing)                                                                       |
+| `LAKON_COLOR`           | `1` forces ANSI colors in `lakonai gain`; `0` disables; unset = TTY auto-detect                                                        |
+| `NO_COLOR`              | Standard. Disables ANSI colors when set to any non-empty value.                                                                        |
 | `CLAUDE_CONFIG_DIR`     | When set during `lakonai install` / `uninstall`, hooks + rule land in that dir instead of `~/.claude/`. Used for multi-profile setups. |
 
 ---
 
 ## Philosophy
 
-> *"Brevity is the soul of wit."* — Shakespeare, *Hamlet*
-> *"Vēnī, vīdī, vīcī."* — Julius Caesar, three words to describe winning a war.
-> *"If."* — Spartans, refusing to be intimidated by a single conditional.
+> _"Brevity is the soul of wit."_ — Shakespeare, _Hamlet_
+> _"Vēnī, vīdī, vīcī."_ — Julius Caesar, three words to describe winning a war.
+> _"If."_ — Spartans, refusing to be intimidated by a single conditional.
 
 Every token your agent emits or reads is paid for — in latency, in money, in context budget. The fastest way to think clearly is to speak briefly. lakonai doesn't make your agent dumber; it makes it Spartan.
 

@@ -83,6 +83,10 @@ async function install({ only, here = false } = {}) {
   process.stdout.write(`  ${BULLET} \`lakonai uninstall\` removes only the lakonai block (keeps your other content).\n`);
   process.stdout.write(`  ${BULLET} \`lakonai revert\`    restores files to pre-install state from backup.\n`);
   process.stdout.write(`  ${BULLET} \`lakonai gain\`      shows how many tokens you've saved.\n`);
+  process.stdout.write(
+    `  ${BULLET} \`lakonai shim\`     makes ls/grep/find/… filtering AUTOMATIC on EVERY agent\n` +
+      `    (Codex/Cursor/Windsurf/Cline/Gemini — not just Claude Code). Prepends ~/.lakon/shim to PATH.\n`
+  );
   process.stdout.write('\nRestart your AI agent (or open a new session) for the rule to take effect.\n');
 
   await maybeOfferCompress({ cwd: process.cwd(), home });

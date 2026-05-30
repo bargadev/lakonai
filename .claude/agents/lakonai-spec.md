@@ -86,8 +86,21 @@ rtk only *suggests* via a manual command; lakonai *activates by itself*.
 
 The shipped terse rule lives in `src/rules/lakonai.md` (the terse rules +
 auto-clarity carve-outs). It's installed into each platform's config by the
-installer. No `mode`, `shell`, or subagent commands — removed to keep lakonai to
-one simple command set (`install` → done).
+installer. No `mode` or subagent commands — removed to keep lakonai to one simple
+command set (`install` → done).
+
+**Universal PATH shim** (`src/install/shim.js`, command `lakonai shim [--off]`).
+The one mechanism that makes shell-output filtering automatic on agents WITHOUT a
+call-rewriting hook (Codex/Cursor/Windsurf/Cline/Gemini). Writes executable
+wrappers (`WRAPPED` = ls/grep/rg/ag/find/cat/tree/head — read-only/one-shot only;
+NO git/tail) into `~/.lakon/shim/` and prepends that dir to PATH via a managed
+block (`MARK_BEGIN`/`MARK_END`) in `.zshrc`/`.bashrc`/`.profile`. Each shim execs
+`lakonai <cmd> "$@"`. **Recursion guard:** `runAndFilter` (bin/lakonai.js) spawns
+the real command with `shim.pathWithoutShim(process.env)` so PATH excludes the
+shim dir — verified by an end-to-end test. Opt-in (edits shell rc); only reaches
+agents that inherit the shell PATH. Read/Grep guards + auto-learning stay
+Claude-only (they act on the agent's own tool calls → need a call-rewriting hook;
+Codex blocked upstream, openai/codex#18491).
 
 **Automatic MCP catalog compression.** `src/mcp-shrink.js` compresses MCP
 tool/prompt/resource descriptions offline; `src/install/mcp.js` auto-wraps stdio
