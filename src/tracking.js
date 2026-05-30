@@ -66,17 +66,6 @@ function aggregate(entries) {
   };
 }
 
-function aggregateSessions(entries) {
-  const sessions = entries.filter(isSessionEntry);
-  const sum = (k) => sessions.reduce((a, e) => a + (e[k] || 0), 0);
-  return {
-    turns: sessions.length,
-    in_tokens: sum('in_tokens'),
-    out_tokens: sum('out_tokens'),
-    cache_read: sum('cache_read'),
-  };
-}
-
 function inWindow(entries, ms) {
   if (ms === Infinity) return entries;
   const cutoff = Date.now() - ms;
@@ -85,10 +74,6 @@ function inWindow(entries, ms) {
 
 function byWindow(entries, ms) {
   return aggregate(inWindow(entries, ms));
-}
-
-function byWindowSessions(entries, ms) {
-  return aggregateSessions(inWindow(entries, ms));
 }
 
 function byCommand(entries) {
@@ -121,14 +106,6 @@ function tok(n) {
   return fmt(n) + ' tok';
 }
 
-const WINDOW_LABELS = [
-  ['1h ', HOUR_MS],
-  ['24h', DAY_MS],
-  ['7d ', WEEK_MS],
-  ['30d', 30 * DAY_MS],
-  ['all', Infinity],
-];
-
 function useColor() {
   if (process.env.NO_COLOR) return false;
   if (process.env.LAKON_COLOR === '0') return false;
@@ -143,18 +120,12 @@ function paint(s, codes) {
 const dim = (s) => paint(s, '2');
 const bold = (s) => paint(s, '1');
 const green = (s) => paint(s, '32');
-const cyan = (s) => paint(s, '36');
 
 function pad(s, n) {
   s = String(s);
   /* istanbul ignore next */
   if (s.length >= n) return s;
   return s + ' '.repeat(n - s.length);
-}
-function rpad(s, n) {
-  s = String(s);
-  if (s.length >= n) return s;
-  return ' '.repeat(n - s.length) + s;
 }
 
 function report() {
@@ -163,64 +134,24 @@ function report() {
     return 'lakonai: no usage recorded yet. Run a few commands through `lakonai` first.\n';
   }
 
-  const lines = [];
-  const W = byWindow(entries, WEEK_MS);
-  const headlinePct = pct(W.saved, W.raw);
-  lines.push(
-    `${bold('lakonai')}  ${dim('— savings this week:')}  ` +
-      `${green(tok(W.saved))} ${dim('saved across')} ${W.calls} ${dim('shell calls')} ${green(`(${headlinePct}%)`)}`
-  );
-  lines.push('');
+  const all = byWindow(entries, Infinity);
+  const lines = [
+    `${bold('lakonai')} — saved ${green(tok(all.saved))} ${green(`(${pct(all.saved, all.raw)}% smaller)`)} across ${all.calls} commands`,
+    '',
+  ];
 
-  lines.push(cyan('shell + read/grep guards') + dim('  (tokens filtered before context)'));
-  lines.push(dim('  win    calls       before          after          saved       %'));
-  for (const [label, ms] of WINDOW_LABELS) {
-    const agg = byWindow(entries, ms);
-    if (agg.calls === 0) continue;
-    const row =
-      `  ${pad(label, 6)}` +
-      `${rpad(agg.calls, 5)}  ` +
-      `${rpad(tok(agg.raw), 12)}  ` +
-      `${rpad(tok(agg.out), 12)}  ` +
-      `${rpad(green(tok(agg.saved)), 12 + (useColor() ? 9 : 0))}  ` +
-      `${rpad(green(pct(agg.saved, agg.raw) + '%'), 4 + (useColor() ? 9 : 0))}`;
-    lines.push(row);
-  }
-
-  const sessionsAll = aggregateSessions(entries);
-  if (sessionsAll.turns > 0) {
-    lines.push('');
-    lines.push(cyan('llm output') + dim('  (model tokens — terse style trims this side)'));
-    lines.push(dim('  win    turns       input         output          cache-read'));
-    for (const [label, ms] of WINDOW_LABELS) {
-      const agg = byWindowSessions(entries, ms);
-      if (agg.turns === 0) continue;
-      const row =
-        `  ${pad(label, 6)}` +
-        `${rpad(agg.turns, 5)}  ` +
-        `${rpad(tok(agg.in_tokens), 12)}  ` +
-        `${rpad(tok(agg.out_tokens), 12)}  ` +
-        `${rpad(tok(agg.cache_read), 12)}`;
-      lines.push(row);
-    }
+  for (const [label, ms] of [['today', DAY_MS], ['this week', WEEK_MS]]) {
+    const a = byWindow(entries, ms);
+    if (!a.calls) continue;
+    lines.push(`  ${pad(label, 11)}${green(tok(a.saved))} saved  ${dim(`(${pct(a.saved, a.raw)}%)`)}`);
   }
 
   const top = byCommand(entries).slice(0, 5);
   if (top.length) {
     lines.push('');
-    lines.push(cyan('top commands') + dim('  (all time)'));
-    for (const c of top) {
-      const row =
-        `  ${pad(c.cmd, 8)}` +
-        `${rpad(c.calls + 'x', 6)}  ` +
-        `${dim('saved')} ${rpad(green(tok(c.saved)), 10 + (useColor() ? 9 : 0))}  ` +
-        `${green(pct(c.saved, c.raw) + '%')}`;
-      lines.push(row);
-    }
+    lines.push('  ' + dim('top: ') + top.map((c) => `${c.cmd} ${green(tok(c.saved))}`).join(dim(' · ')));
   }
 
-  lines.push('');
-  lines.push(dim(`log: ${logPath()}`));
   return lines.join('\n') + '\n';
 }
 

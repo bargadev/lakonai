@@ -4,6 +4,55 @@ All notable changes to **lakonai** are recorded here. The version log lives in
 this file (no git tags). Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semver.
 
+## [Unreleased]
+
+## [0.12.1] - 2026-05-30
+
+### Changed
+- **README — sellable marketing pass.** Reframed the pitch as **four fronts** of
+  token waste (model output · shell input · file reads · context catalogs+memory)
+  and surfaced the two newest, most differentiating capabilities high up:
+  automatic MCP catalog compression and `compress-memory` (no API key). No feature
+  or number was invented; dropped a stale test-count/coverage claim.
+- **CLAUDE.md** — added a rule to keep the npm package page ("About") in sync:
+  npm only re-renders the README on publish, so a user-facing README change isn't
+  done until it ships in a published version.
+
+## [0.12.0] - 2026-05-30
+
+### Added
+- **Memory-file compression** — `lakonai compress-memory <file>` (+ `revert-memory`).
+  Manual, opt-in compression of *user-authored* memory (`CLAUDE.md`, notes) using a
+  local AI CLI you already have: `claude` / `gemini` / `codex` / `cursor-agent`,
+  auto-detected on PATH (override `LAKONAI_MEM_CLI`; model via `LAKONAI_MEM_MODEL`).
+  **No API key.** A `<name>.original.md` backup is written first; the output is
+  **validated** so every fenced/inline code span and URL survives byte-for-byte —
+  on a miss it runs one fix pass, else aborts untouched. Sensitive-looking
+  filenames (`.env`, `*api-key*`, …) are refused. `install` offers a one-time
+  opt-in prompt to compress a detected `CLAUDE.md`. Unlike the MCP catalog shrink,
+  this rewrites authored prose with an LLM, so it is **never automatic**
+  (`src/mem-llm.js` + `src/mem-compress.js`). Measured: ~59% on a verbose file,
+  ~2% on an already-terse one.
+- **Automatic MCP catalog compression.** On Claude Code install, lakonai finds
+  the MCP servers in `~/.claude.json` and transparently wraps each stdio server
+  (`lakonai __mcp <cmd>`) so its tool/prompt/resource **descriptions** are
+  compressed before they reach context (offline, regex; `src/mcp-shrink.js` +
+  `src/install/mcp.js`). Backed up, reversible on `uninstall`, opt-out
+  `LAKON_NO_MCP=1`. Requests and tool-call results are never altered. (Caveman's
+  MCP shrinker is manual config; this is automatic.)
+- **Benchmark preview in `lakonai gain`** — when there's no usage logged yet,
+  `gain` prints a reproducible, offline filter-savings benchmark so you see the
+  value immediately (no separate command).
+
+### Removed (simplification — back to one command set)
+- `lakonai mode`, `compress`, `shrink`, `shell-init`/`shell-uninit`, `inspect`,
+  `reset`, `list` commands and the `UserPromptSubmit` per-turn reinforcement hook
+  and the terse subagents. These were caveman-parity experiments that diluted the
+  "`install` → automatic savings" identity. Core surface is now `install`,
+  `uninstall`, `revert`, `backups`, `gain`, `doctor`, `version` (+ the internal
+  `lakonai <cmd>` filter engine). Filtering, Read/Grep guards and auto-learning
+  are unchanged.
+
 ## [0.11.0] - 2026-05-30
 
 ### Added

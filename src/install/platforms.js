@@ -5,7 +5,7 @@ const path = require('path');
 const { backupFile, restoreAllBackups } = require('./backup');
 const { installHook, uninstallHook } = require('./claude-hook');
 const { installCommands, uninstallCommands } = require('./claude-commands');
-const { installAgents, uninstallAgents } = require('./claude-agents');
+const { wrapMcp, unwrapMcp } = require('./mcp');
 const { claudeConfigDir } = require('./paths');
 
 const MARK_BEGIN = '<!-- lakonai:begin -->';
@@ -77,7 +77,7 @@ const PLATFORMS = [
       const rulePath = upsertBlock(id, path.join(claudeConfigDir(home), 'CLAUDE.md'), rule);
       const hookResult = installHook(home);
       const cmds = installCommands(home);
-      installAgents(home);
+      wrapMcp(home);
       /* istanbul ignore next */
       const suffixHook = hookResult.settingsMerged ? '+ PreToolUse hook' : `(hook: ${hookResult.note})`;
       /* istanbul ignore next */
@@ -87,7 +87,7 @@ const PLATFORMS = [
     uninstall: ({ home }) => {
       uninstallHook(home);
       uninstallCommands(home);
-      uninstallAgents(home);
+      unwrapMcp(home);
       return stripBlock(path.join(claudeConfigDir(home), 'CLAUDE.md'));
     },
   },

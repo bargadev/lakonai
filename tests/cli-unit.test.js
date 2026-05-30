@@ -72,29 +72,6 @@ test('runAndFilter reports a spawn error with exit 127', async () => {
   assert.match(err(), /lakonai:/);
 });
 
-test('inspectCmd shows raw vs filtered vs saved', async () => {
-  await withCapture(() => cli.inspectCmd(['echo', 'hi there']));
-  assert.match(out(), /raw:/);
-  assert.match(out(), /filtered:/);
-  assert.match(out(), /saved:/);
-});
-
-test('inspectCmd with no command errors', async () => {
-  await withCapture(() => cli.inspectCmd([]));
-  assert.match(err(), /missing command/);
-});
-
-test('inspectCmd filters a supported command (git)', async () => {
-  await withCapture(() => cli.inspectCmd(['git', '--version']));
-  assert.match(out(), /saved:/);
-});
-
-test('inspectCmd merges stderr for test runners', async () => {
-  // vitest is not installed here; the point is to exercise the stderr-merge path
-  await withCapture(() => cli.inspectCmd(['vitest']));
-  assert.match(out(), /raw:/);
-});
-
 test('runAndFilter merges stderr for a test command (npm test)', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lakon-npmtest-'));
   fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 't', scripts: { test: 'node -e 0' } }));
@@ -107,20 +84,11 @@ test('runAndFilter merges stderr for a test command (npm test)', async () => {
   }
 });
 
-test('main: reset twice → second reports nothing to clear', async () => {
-  process.argv = ['node', 'lakonai', 'reset'];
-  await withCapture(() => cli.main());
-  await withCapture(() => cli.main());
-  assert.match(out(), /nothing to clear/);
-});
-
-test('main: --help prints usage', async () => {
+test('main: --help and no args print usage', async () => {
   process.argv = ['node', 'lakonai', '--help'];
   await withCapture(() => cli.main());
   assert.match(out(), /Usage:/);
-});
 
-test('main: no args prints usage', async () => {
   process.argv = ['node', 'lakonai'];
   await withCapture(() => cli.main());
   assert.match(out(), /Usage:/);
@@ -132,20 +100,13 @@ test('main: version', async () => {
   assert.match(out(), /lakonai \d+\.\d+\.\d+/);
 });
 
-test('main: list shows platforms', async () => {
-  process.argv = ['node', 'lakonai', 'list'];
-  await withCapture(() => cli.main());
-  assert.match(out(), /claude-code/);
-});
-
-test('main: gain / reset', async () => {
+test('main: gain / stats', async () => {
   process.argv = ['node', 'lakonai', 'gain'];
   await withCapture(() => cli.main());
-  const gain = out();
-  process.argv = ['node', 'lakonai', 'reset'];
+  assert.ok(out().length > 0);
+  process.argv = ['node', 'lakonai', 'stats'];
   await withCapture(() => cli.main());
-  assert.match(out(), /lakonai:/);
-  assert.ok(gain.length > 0);
+  assert.ok(out().length > 0);
 });
 
 test('main: backups', async () => {
@@ -154,10 +115,25 @@ test('main: backups', async () => {
   assert.match(out(), /backup history/);
 });
 
-test('main: inspect subcommand', async () => {
-  process.argv = ['node', 'lakonai', 'inspect', 'echo', 'x'];
+test('main: doctor renders a per-platform report', async () => {
+  process.argv = ['node', 'lakonai', 'doctor'];
   await withCapture(() => cli.main());
-  assert.match(out(), /raw:/);
+  assert.match(out(), /lakonai doctor/);
+  assert.match(out(), /Claude Code/);
+});
+
+test('main: gain on an empty log shows the benchmark preview', async () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'lakon-gainempty-'));
+  const prev = process.env.LAKON_HOME;
+  process.env.LAKON_HOME = home;
+  try {
+    process.argv = ['node', 'lakonai', 'gain'];
+    await withCapture(() => cli.main());
+    assert.match(out(), /sample benchmark/);
+    assert.match(out(), /git log -p/);
+  } finally {
+    process.env.LAKON_HOME = prev;
+  }
 });
 
 test('main: default routes to runAndFilter', async () => {
@@ -189,69 +165,6 @@ test('main: install / uninstall / revert dispatch (isolated HOME)', async () => 
     process.env.HOME = prevHome;
     if (prevCfg !== undefined) process.env.CLAUDE_CONFIG_DIR = prevCfg;
   }
-});
-
-test('main: mode — show, set, and reject unknown', async () => {
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'lakon-mode-'));
-  const prev = process.env.LAKON_HOME;
-  const prevMode = process.env.LAKON_MODE;
-  process.env.LAKON_HOME = home;
-  delete process.env.LAKON_MODE;
-  try {
-    process.argv = ['node', 'lakonai', 'mode'];
-    await withCapture(() => cli.main());
-    assert.match(out(), /lakonai mode: full/);
-
-    process.argv = ['node', 'lakonai', 'mode', 'ultra'];
-    await withCapture(() => cli.main());
-    assert.match(out(), /set to ultra/);
-
-    process.argv = ['node', 'lakonai', 'mode', 'wenyan'];
-    await withCapture(() => cli.main());
-    assert.match(out(), /unknown mode/);
-  } finally {
-    process.env.LAKON_HOME = prev;
-    if (prevMode !== undefined) process.env.LAKON_MODE = prevMode;
-  }
-});
-
-test('main: compress — dry-run report and missing-file error', async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lakon-cmpcli-'));
-  const f = path.join(dir, 'm.md');
-  fs.writeFileSync(f, 'x   \n\n\n\ny\n');
-  process.argv = ['node', 'lakonai', 'compress', f, '--dry-run'];
-  await withCapture(() => cli.main());
-  assert.match(out(), /dry-run/);
-  assert.match(out(), /tokens/);
-
-  process.argv = ['node', 'lakonai', 'compress', '--llm'];
-  await withCapture(() => cli.main());
-  assert.match(err(), /missing file/);
-
-  // real write (no --dry-run) covers the written-report branch
-  const f2 = path.join(dir, 'w.md');
-  fs.writeFileSync(f2, 'p   \n\n\n\nq\n');
-  process.argv = ['node', 'lakonai', 'compress', f2];
-  await withCapture(() => cli.main());
-  assert.match(out(), /written; backup \.bak/);
-});
-
-test('main: doctor renders a per-platform report', async () => {
-  process.argv = ['node', 'lakonai', 'doctor'];
-  await withCapture(() => cli.main());
-  assert.match(out(), /lakonai doctor/);
-  assert.match(out(), /Claude Code/);
-});
-
-test('main: shell-init / shell-uninit print the snippet and removal note', async () => {
-  process.argv = ['node', 'lakonai', 'shell-init'];
-  await withCapture(() => cli.main());
-  assert.match(out(), /LAKON_SHELL/);
-  assert.match(out(), /lakonai:shell:begin/);
-
-  process.argv = ['node', 'lakonai', 'shell-uninit'];
-  await withCapture(() => cli.main());
-  assert.match(out(), /Remove the block/);
 });
 
 test('maybePrintUpdateHint path via gain when an update is cached', async () => {

@@ -36,12 +36,6 @@ const HOOKS = [
     event: 'SessionStart',
     matcher: null,
   },
-  {
-    basename: 'lakon-prompt-reinforce.js',
-    src: path.join(__dirname, '..', 'hooks', 'prompt-reinforce.js'),
-    event: 'UserPromptSubmit',
-    matcher: null,
-  },
 ];
 
 const SUPPORT_FILES = [

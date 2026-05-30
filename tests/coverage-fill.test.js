@@ -37,7 +37,7 @@ test('tracking.report: empty log renders without a top-commands section', () => 
   withTracking((tracking) => {
     const report = tracking.report();
     assert.equal(typeof report, 'string');
-    assert.doesNotMatch(report, /top commands/);
+    assert.doesNotMatch(report, /top: /);
   });
 });
 
@@ -50,7 +50,7 @@ test('tracking.report: session-only log renders without a top-commands section',
       JSON.stringify({ t: Date.now(), cmd: 'session', in_tokens: 10, out_tokens: 5 }) + '\n'
     );
     const report = tracking.report();
-    assert.doesNotMatch(report, /top commands/);
+    assert.doesNotMatch(report, /top: /);
   });
 });
 
@@ -60,7 +60,7 @@ test('tracking.report: falls back to "unknown" cmd and pads long values', () => 
     tracking.record({ cmd: 'git', args: ['log'], rawTokens: 200, filteredTokens: 50 });
     tracking.record({ cmd: 'git', args: ['status'], rawTokens: 300, filteredTokens: 60 });
     const report = tracking.report();
-    assert.match(report, /top commands/);
+    assert.match(report, /top: /);
     assert.match(report, /unknown/);
   });
 });

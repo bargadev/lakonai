@@ -134,7 +134,7 @@ test('report returns "no usage" message when log empty', async () => {
   });
 });
 
-test('report renders shell + session blocks', async () => {
+test('report renders a friendly headline + windows + top, excluding sessions', async () => {
   const home = freshHome();
   const now = Date.now();
   writeLog(home, [
@@ -145,10 +145,10 @@ test('report renders shell + session blocks', async () => {
   await withEnv({ LAKON_HOME: home, LAKON_COLOR: '0' }, () => {
     const t = freshRequire('../src/tracking');
     const out = t.report();
-    assert.match(out, /savings this week/);
-    assert.match(out, /shell \+ read\/grep guards/);
-    assert.match(out, /llm output/);
-    assert.match(out, /top commands/);
+    assert.match(out, /saved .* smaller.* across 2 commands/); // session excluded from count
+    assert.match(out, /today/);
+    assert.match(out, /this week/);
+    assert.match(out, /top: /);
     assert.match(out, /git/);
     assert.match(out, /ls/);
     assert.ok(!out.includes('\x1b['), 'should not contain ANSI codes');
@@ -208,16 +208,16 @@ test('report formats large numbers (M / k suffix)', async () => {
   });
 });
 
-test('report skips empty windows (no calls in last hour)', async () => {
+test('report skips empty windows (today empty, this week present)', async () => {
   const home = freshHome();
-  const old = Date.now() - (8 * 24 * 60 * 60 * 1000); // 8 days ago
-  writeLog(home, [{ t: old, cmd: 'git', args: [], raw: 100, out: 50, saved: 50 }]);
+  const twoDaysAgo = Date.now() - 2 * 24 * 60 * 60 * 1000;
+  writeLog(home, [{ t: twoDaysAgo, cmd: 'git', args: [], raw: 100, out: 50, saved: 50 }]);
   await withEnv({ LAKON_HOME: home, LAKON_COLOR: '0' }, () => {
     const t = freshRequire('../src/tracking');
     const out = t.report();
-    assert.ok(!/\n\s+1h\s+/.test(out), 'should not show 1h row');
-    assert.ok(!/\n\s+24h\s+/.test(out), 'should not show 24h row');
-    assert.match(out, /\n\s+30d\s+/);
+    assert.ok(!/today/.test(out), 'today window should be skipped (entry is 2 days old)');
+    assert.match(out, /this week/);
+    assert.match(out, /saved/); // headline still shows all-time
   });
 });
 
@@ -249,22 +249,6 @@ test('logPath returns expected file under LAKON_HOME', async () => {
   await withEnv({ LAKON_HOME: home }, () => {
     const t = freshRequire('../src/tracking');
     assert.equal(t.logPath(), path.join(home, 'log.jsonl'));
-  });
-});
-
-test('llm output block skips windows with zero turns', async () => {
-  const home = freshHome();
-  const eightDaysAgo = Date.now() - (8 * 24 * 60 * 60 * 1000);
-  writeLog(home, [
-    { t: Date.now(), cmd: 'git', args: [], raw: 100, out: 50, saved: 50 },
-    { t: eightDaysAgo, cmd: 'session', session_id: 'old', in_tokens: 1, out_tokens: 1, cache_read: 0 },
-  ]);
-  await withEnv({ LAKON_HOME: home, LAKON_COLOR: '0' }, () => {
-    const t = freshRequire('../src/tracking');
-    const out = t.report();
-    assert.match(out, /llm output/);
-    assert.match(out, /\n\s+30d\s+/);
-    assert.ok(!/llm output[\s\S]*?\n\s+1h\s+/.test(out), 'should skip 1h window in llm block');
   });
 });
 

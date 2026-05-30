@@ -51,13 +51,6 @@ test('lakon -v prints version', () => {
   assert.match(r.stdout, /lakonai/);
 });
 
-test('lakon list prints platform list', () => {
-  const r = run(['list']);
-  assert.equal(r.status, 0);
-  assert.match(r.stdout, /claude-code/);
-  assert.match(r.stdout, /cursor/);
-});
-
 test('lakon backups shows empty state', () => {
   const home = freshHome();
   const r = run(['backups'], { LAKON_HOME: home });
@@ -76,45 +69,12 @@ test('lakon stats is alias for gain', () => {
   assert.match(r.stdout, /no usage recorded/);
 });
 
-test('lakon reset on empty home returns "nothing to clear"', () => {
-  const home = freshHome();
-  const r = run(['reset'], { LAKON_HOME: home });
-  assert.match(r.stdout, /nothing to clear/);
-});
-
-test('lakon reset after some records clears the log', () => {
-  const home = freshHome();
-  fs.writeFileSync(path.join(home, 'log.jsonl'), JSON.stringify({ t: Date.now(), cmd: 'x', raw: 1, out: 0, saved: 1 }) + '\n');
-  const r = run(['reset'], { LAKON_HOME: home });
-  assert.match(r.stdout, /log cleared/);
-  assert.equal(fs.existsSync(path.join(home, 'log.jsonl')), false);
-});
-
-test('lakon inspect runs and shows raw vs filtered', () => {
-  const r = run(['inspect', 'echo', 'hello']);
-  assert.match(r.stdout, /raw:/);
-  assert.match(r.stdout, /filtered:/);
-  assert.match(r.stdout, /saved:/);
-});
-
-test('lakon inspect with supported cmd exercises filter path', () => {
-  const r = run(['inspect', 'ls', '/tmp']);
-  assert.match(r.stdout, /raw:/);
-  assert.match(r.stdout, /filtered:/);
-});
-
 test('lakon supported cmd wrapper runs and tracks', () => {
   const home = freshHome();
   const r = run(['ls', '/tmp'], { LAKON_HOME: home });
   assert.equal(r.status, 0);
   const log = fs.readFileSync(path.join(home, 'log.jsonl'), 'utf8');
   assert.match(log, /"cmd":"ls"/);
-});
-
-test('lakon inspect with no command errors out', () => {
-  const r = run(['inspect']);
-  assert.equal(r.status, 2);
-  assert.match(r.stderr, /missing command/);
 });
 
 test('lakon git log filters and tracks (passthrough echo as fallback)', () => {

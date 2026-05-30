@@ -32,6 +32,14 @@ A README that overstates or lies about a feature is worse than no README — it
 burns trust. Verify the number before writing it (run the suite, grep the
 constant). Treat a stale or inaccurate README as a release-blocking bug.
 
+**Keep the npm page ("About") in sync too.** The npmjs.com package page renders
+`README.md`, but **only re-renders it on a new publish** — editing the README
+locally does NOT update what visitors see on npm. So a user-facing README change
+is not "done" until it ships in a published version. Whenever you change the
+README, treat the npm About as part of the same task: bump the version + add a
+CHANGELOG entry and publish (see Releasing) so npm shows the current copy. Never
+leave npm displaying a stale README while the repo has a newer one.
+
 ## Releasing (merge + CHANGELOG, no tags)
 
 The version log lives in **`CHANGELOG.md`** — there are no git tags. To cut a

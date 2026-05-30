@@ -2,9 +2,11 @@
 
 const fs = require('fs');
 const path = require('path');
+const readline = require('readline');
 const platforms = require('./platforms');
 const { listBackups } = require('./backup');
 const { homedir } = require('./paths');
+const memCompress = require('../mem-compress');
 
 const RULE_PATH = path.join(__dirname, '..', 'rules', 'lakonai.md');
 
@@ -82,6 +84,73 @@ async function install({ only, here = false } = {}) {
   process.stdout.write(`  ${BULLET} \`lakonai revert\`    restores files to pre-install state from backup.\n`);
   process.stdout.write(`  ${BULLET} \`lakonai gain\`      shows how many tokens you've saved.\n`);
   process.stdout.write('\nRestart your AI agent (or open a new session) for the rule to take effect.\n');
+
+  await maybeOfferCompress({ cwd: process.cwd(), home });
+}
+
+// First existing memory file worth compressing: project CLAUDE.md, then the
+// user-level one. Backups (*.original.md) are never offered.
+function pickMemoryTarget(cwd, home) {
+  const candidates = [
+    path.join(cwd, 'CLAUDE.md'),
+    path.join(home, '.claude', 'CLAUDE.md'),
+  ];
+  for (const c of candidates) {
+    if (memCompress.isBackup(c)) continue;
+    try {
+      if (fs.statSync(c).isFile()) return c;
+    } catch {
+      /* not present */
+    }
+  }
+  return null;
+}
+
+/* istanbul ignore next -- thin interactive shell; promptYesNo logic is the testable part */
+function promptYesNo(question, { input = process.stdin, output = process.stdout } = {}) {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({ input, output });
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(/^y(es)?$/i.test((answer || '').trim()));
+    });
+  });
+}
+
+/* istanbul ignore next -- interactive; gated on TTY, exercised manually not in CI */
+async function maybeOfferCompress({ cwd, home }) {
+  if (!process.stdin.isTTY) return; // never block CI / piped installs
+  const target = pickMemoryTarget(cwd, home);
+  if (!target) return;
+
+  const backup = memCompress.backupPath(target);
+  process.stdout.write(
+    `\n  ${BULLET} Found memory file ${shortenPath(target)}.\n` +
+      `    Compressing it shrinks the tokens it costs every session. A local AI CLI\n` +
+      `    rewrites the prose (lossy), so a backup is saved to ${shortenPath(backup)}\n` +
+      `    and you can undo with \`lakonai revert-memory ${shortenPath(target)}\`.\n`
+  );
+  const yes = await promptYesNo('    Compress it now with your local AI CLI? [y/N] ');
+  if (!yes) {
+    process.stdout.write(`    Skipped. Run \`lakonai compress-memory ${shortenPath(target)}\` anytime.\n`);
+    return;
+  }
+  try {
+    const llm = require('../mem-llm');
+    const provider = llm.pickProvider();
+    process.stdout.write(`    compressing with ${provider.bin} (${provider.platform})…\n`);
+    const res = memCompress.compressFile(target, {
+      compress: (orig) => llm.compressWith(orig, { provider }),
+      fix: (orig, comp, missing) => llm.fixWith(orig, comp, missing, { provider }),
+      remote: true,
+    });
+    const pct = res.beforeTokens ? Math.round((1 - res.afterTokens / res.beforeTokens) * 100) : 0;
+    process.stdout.write(
+      `    ${OK} Compressed ${res.beforeTokens} ${ARROW} ${res.afterTokens} tokens (~${pct}% smaller). Backup: ${shortenPath(res.backup)}\n`
+    );
+  } catch (err) {
+    process.stdout.write(`    ${FAIL} ${err.message}\n    Run \`lakonai compress-memory ${shortenPath(target)}\` later to retry.\n`);
+  }
 }
 
 async function uninstall() {
@@ -156,4 +225,4 @@ function listPlatforms() {
   });
 }
 
-module.exports = { install, uninstall, revert, listPlatforms, backupsReport };
+module.exports = { install, uninstall, revert, listPlatforms, backupsReport, pickMemoryTarget };
