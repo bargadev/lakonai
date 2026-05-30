@@ -6,6 +6,13 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [0.15.1] - 2026-05-30
+
+### Changed
+- README: promoted the slogan **"Speak less. Ship more."** from a footer `<sub>`
+  to a hero `<h3>` (a footer line nobody scrolls to isn't a slogan), and trimmed
+  the redundant tagline.
+
 ## [0.15.0] - 2026-05-30
 
 ### Added
