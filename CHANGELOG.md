@@ -6,6 +6,26 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-05-30
+
+### Added
+- **Platform-agnostic auto-learning.** Beyond the Claude-transcript learner,
+  lakonai now also learns from `~/.lakon/log.jsonl` — appended to by every
+  `lakonai` call (shim wrappers + rule-prefixed commands) on ANY agent. A heavy,
+  frequent non-builtin command gets promoted to the filtered set automatically,
+  everywhere, throttled hourly (`learn.analyzeLog` / `maybeLearnFromLog`, called
+  from `runAndFilter`). Disable with `LAKON_NO_LEARN=1`. With the shim, all four
+  input-side features now run automatically on every agent for shell-mediated
+  work; only guarding the agent's own non-shell Read tool stays Claude-only.
+
+### Changed
+- Trimmed the Claude Code install line: shows `+ N slash commands` instead of
+  listing every command.
+
+### Notes
+- Releases now publish **only via CI** on merge to `main` (no manual `npm
+  publish`) — documented in CLAUDE.md.
+
 ## [0.14.0] - 2026-05-30
 
 ### Added

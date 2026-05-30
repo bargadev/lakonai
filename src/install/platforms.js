@@ -81,7 +81,7 @@ const PLATFORMS = [
       /* istanbul ignore next */
       const suffixHook = hookResult.settingsMerged ? '+ PreToolUse hook' : `(hook: ${hookResult.note})`;
       /* istanbul ignore next */
-      const suffixCmds = cmds.length ? `+ ${cmds.join(' ')}` : '';
+      const suffixCmds = cmds.length ? `+ ${cmds.length} slash command${cmds.length > 1 ? 's' : ''}` : '';
       return [rulePath, suffixHook, suffixCmds].filter(Boolean).join(' ');
     },
     uninstall: ({ home }) => {

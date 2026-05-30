@@ -105,10 +105,13 @@ checks read commands (cat/head/tail/less/more/bat) against `isDeniedPath` (reuse
 from `read-guard.js`) BEFORE spawning; a denied path (lockfile/node_modules/build
 artifact) is skipped with a one-line reason + a 0-token tracking entry. Via the
 shim this makes junk-read refusal automatic on every agent for shell reads. The
-agent's own non-shell Read tool still needs a hook (Claude only). Auto-learning
-stays Claude-only (needs the agent's full command stream via an end-of-turn hook;
-Codex/Cursor/Gemini could host it, Windsurf/Cline lack the event) — and is largely
-moot elsewhere since the shim already filters the standard heavy commands.
+agent's own non-shell Read tool still needs a hook (Claude only). Auto-learning runs on
+every agent via `learn.analyzeLog` / `maybeLearnFromLog` (called from
+`runAndFilter`, throttled hourly off `~/.lakon/log.jsonl`), in addition to the
+Claude-transcript learner (`analyzeTranscript`, wider window). So all four
+input-side features are automatic on every agent for shell-mediated work; only
+guarding the agent's OWN non-shell Read tool stays Claude-only (needs a
+call-rewriting hook).
 
 **Automatic MCP catalog compression.** `src/mcp-shrink.js` compresses MCP
 tool/prompt/resource descriptions offline; `src/install/mcp.js` auto-wraps stdio

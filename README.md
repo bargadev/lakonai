@@ -326,20 +326,23 @@ agent's own non-shell Read tool and its full command stream — guarding that to
 and auto-learning need a call-rewriting hook, which today only Claude Code
 exposes. Honest matrix:
 
-| Agent       | Terse rule | Shell filter         | Read/Grep guard       | Auto-learning |
-| ----------- | :--------: | -------------------- | --------------------- | :-----------: |
-| Claude Code |     ✅     | ✅ automatic (hook)  | ✅ tool + shell        |      ✅       |
-| Codex CLI   |     ✅     | ✅ automatic (shim¹) | ✅ shell reads (shim²) |     ❌³       |
-| Cursor      |     ✅     | ✅ automatic (shim¹) | ✅ shell reads (shim²) |     ❌³       |
-| Windsurf    |     ✅     | ✅ automatic (shim¹) | ✅ shell reads (shim²) |     ❌³       |
-| Cline       |     ✅     | ✅ automatic (shim¹) | ✅ shell reads (shim²) |     ❌³       |
-| Gemini CLI  |     ✅     | ✅ automatic (shim¹) | ✅ shell reads (shim²) |     ❌³       |
+| Agent       | Terse rule | Shell filter         | Read/Grep guard       | Auto-learning   |
+| ----------- | :--------: | -------------------- | --------------------- | --------------- |
+| Claude Code |     ✅     | ✅ automatic (hook)  | ✅ tool + shell        | ✅ transcript+log |
+| Codex CLI   |     ✅     | ✅ automatic (shim¹) | ✅ shell reads (shim²) | ✅ from log³     |
+| Cursor      |     ✅     | ✅ automatic (shim¹) | ✅ shell reads (shim²) | ✅ from log³     |
+| Windsurf    |     ✅     | ✅ automatic (shim¹) | ✅ shell reads (shim²) | ✅ from log³     |
+| Cline       |     ✅     | ✅ automatic (shim¹) | ✅ shell reads (shim²) | ✅ from log³     |
+| Gemini CLI  |     ✅     | ✅ automatic (shim¹) | ✅ shell reads (shim²) | ✅ from log³     |
 
 Run `lakonai doctor` to see, per platform, what's actually active on your machine.
+The only thing **not** automatic everywhere is guarding the agent's *own non-shell
+Read tool* — that needs a call-rewriting hook, which today only Claude Code exposes
+(see ²).
 
 ¹ `lakonai shim` prepends `~/.lakon/shim` to PATH so `ls`/`grep`/`rg`/`ag`/`find`/`cat`/`tree`/`head` filter automatically for any agent that runs them through a shell (opt-in — it edits your shell rc; `git` is excluded for safety). Without it, those commands filter only when the model prefixes `lakonai` itself.
 ² The shim refuses junk reads (lockfiles, `node_modules/…`, build artifacts) done through the shell with `cat`/`head`/`tail`/`less` — same deny rules as the Claude Read hook. An agent's *own* internal Read tool (not via the shell) still needs a hook, so capping/blocking it is automatic only on Claude Code. Codex's hook [can't yet rewrite a tool call](https://github.com/openai/codex/issues/18491); Cursor's can deny but not cap; Gemini's `BeforeTool` could (installer planned, pending schema validation against the real CLI).
-³ Auto-learning needs to observe the agent's full command stream (an end-of-turn hook), so it's Claude-Code-only — and largely moot elsewhere, since the shim already filters the standard heavy commands without needing to learn them.
+³ Auto-learning runs off `~/.lakon/log.jsonl`, which every `lakonai` call (shim wrappers + rule-prefixed commands) appends to on any agent — so it promotes new heavy commands automatically everywhere, throttled hourly. Claude Code additionally learns from the full session transcript (a wider window). Disable with `LAKON_NO_LEARN=1`.
 
 ¹ "Claude Code" covers **every** Claude Code frontend — terminal CLI, VS Code extension, JetBrains plugin, desktop app. All read the same `~/.claude/CLAUDE.md` + `~/.claude/settings.json`, so one install lights up all of them.
 

@@ -131,6 +131,52 @@ function analyzeTranscript(transcriptPath, isBuiltin) {
   promote(stats, isBuiltin);
 }
 
+// Platform-agnostic learning. The transcript reader above is Claude-Code-only;
+// this learns from `~/.lakon/log.jsonl` instead — populated by EVERY `lakonai`
+// invocation (shim wrappers + rule-prefixed calls) on ANY agent. So auto-learning
+// runs automatically everywhere, not just on Claude. Smaller observation window
+// (only commands routed through lakonai), but no hook required.
+function analyzeLog(isBuiltin) {
+  if (process.env.LAKON_NO_LEARN === '1' || process.env.LAKON_NO_TRACK === '1') return;
+  let text;
+  try {
+    text = fs.readFileSync(path.join(lakonHome(), 'log.jsonl'), 'utf8');
+  } catch {
+    return;
+  }
+  const stats = {};
+  for (const line of text.split('\n')) {
+    if (!line.trim()) continue;
+    let e;
+    try {
+      e = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    const cmd = e && typeof e.cmd === 'string' ? e.cmd : null;
+    if (!cmd || cmd === 'session' || isBuiltin(cmd)) continue;
+    const s = stats[cmd] || { count: 0, tokens: 0 };
+    s.count += 1;
+    s.tokens += e.raw || 0;
+    stats[cmd] = s;
+  }
+  if (Object.keys(stats).length) promote(stats, isBuiltin);
+}
+
+const LEARN_LOG_TTL_MS = 60 * 60 * 1000; // scan the log at most once per hour
+
+// Throttled entry point for the per-call path (runAndFilter): scans the log at
+// most hourly, so learning is automatic on every agent but costs nothing hot.
+function maybeLearnFromLog(isBuiltin, now = Date.now()) {
+  if (process.env.LAKON_NO_LEARN === '1' || process.env.LAKON_NO_TRACK === '1') return false;
+  const stamp = path.join(lakonHome(), '.learn-log-stamp');
+  const last = Number(readJson(stamp, { t: 0 }).t) || 0;
+  if (last && now - last < LEARN_LOG_TTL_MS) return false; // last===0 ⇒ never run ⇒ run now
+  writeJson(stamp, { t: now });
+  analyzeLog(isBuiltin);
+  return true;
+}
+
 let _learnedCache;
 function learnedCommands() {
   if (_learnedCache === undefined) _learnedCache = new Set(readJson(learnedPath(), []));
@@ -149,6 +195,8 @@ module.exports = {
   extractBashUsage,
   promote,
   analyzeTranscript,
+  analyzeLog,
+  maybeLearnFromLog,
   learnedCommands,
   isLearned,
   _resetCache,

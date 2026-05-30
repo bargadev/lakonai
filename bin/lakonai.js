@@ -98,6 +98,15 @@ function runAndFilter(cmd, args) {
     filteredTokens: countTokensApprox(filtered),
   });
 
+  // Auto-learning off the universal log (throttled hourly) — runs on EVERY agent,
+  // not just Claude Code's transcript. Never let it break the command.
+  try {
+    require('../src/learn').maybeLearnFromLog((c) => isSupported(c));
+    /* istanbul ignore next */
+  } catch {
+    // learning is best-effort
+  }
+
   /* istanbul ignore next */
   process.exit(child.status ?? 0);
 }
