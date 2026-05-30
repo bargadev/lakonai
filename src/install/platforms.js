@@ -5,6 +5,7 @@ const path = require('path');
 const { backupFile, restoreAllBackups } = require('./backup');
 const { installHook, uninstallHook } = require('./claude-hook');
 const { installCommands, uninstallCommands } = require('./claude-commands');
+const { installAgents, uninstallAgents } = require('./claude-agents');
 const { claudeConfigDir } = require('./paths');
 
 const MARK_BEGIN = '<!-- lakonai:begin -->';
@@ -69,11 +70,14 @@ const PLATFORMS = [
     id: 'claude-code',
     label: 'Claude Code',
     scope: 'global',
+    rulePath: (home) => path.join(claudeConfigDir(home), 'CLAUDE.md'),
+    hasHooks: true,
     detect: (home) => !!process.env.CLAUDE_CONFIG_DIR || dirExists(claudeConfigDir(home)),
     install: ({ home, rule, id }) => {
       const rulePath = upsertBlock(id, path.join(claudeConfigDir(home), 'CLAUDE.md'), rule);
       const hookResult = installHook(home);
       const cmds = installCommands(home);
+      installAgents(home);
       /* istanbul ignore next */
       const suffixHook = hookResult.settingsMerged ? '+ PreToolUse hook' : `(hook: ${hookResult.note})`;
       /* istanbul ignore next */
@@ -83,6 +87,7 @@ const PLATFORMS = [
     uninstall: ({ home }) => {
       uninstallHook(home);
       uninstallCommands(home);
+      uninstallAgents(home);
       return stripBlock(path.join(claudeConfigDir(home), 'CLAUDE.md'));
     },
   },
@@ -90,6 +95,7 @@ const PLATFORMS = [
     id: 'codex',
     label: 'Codex CLI',
     scope: 'global',
+    rulePath: (home) => path.join(home, '.codex', 'AGENTS.md'),
     detect: (home) => dirExists(path.join(home, '.codex')),
     install: ({ home, rule, id }) => upsertBlock(id, path.join(home, '.codex', 'AGENTS.md'), rule),
     uninstall: ({ home }) => stripBlock(path.join(home, '.codex', 'AGENTS.md')),
@@ -98,6 +104,7 @@ const PLATFORMS = [
     id: 'cursor',
     label: 'Cursor (per-repo rule)',
     scope: 'project',
+    rulePath: () => path.join(process.cwd(), '.cursor', 'rules', 'lakonai.mdc'),
     detect: () => fs.existsSync(path.join(process.cwd(), '.cursor')),
     install: ({ rule, id }) => upsertBlock(id, path.join(process.cwd(), '.cursor', 'rules', 'lakonai.mdc'), rule),
     uninstall: () => {
@@ -109,6 +116,7 @@ const PLATFORMS = [
     id: 'windsurf',
     label: 'Windsurf (per-repo rule)',
     scope: 'project',
+    rulePath: () => path.join(process.cwd(), '.windsurf', 'rules', 'lakonai.md'),
     detect: () => fs.existsSync(path.join(process.cwd(), '.windsurf')),
     install: ({ rule, id }) => upsertBlock(id, path.join(process.cwd(), '.windsurf', 'rules', 'lakonai.md'), rule),
     uninstall: () => {
@@ -120,6 +128,7 @@ const PLATFORMS = [
     id: 'cline',
     label: 'Cline (per-repo rule)',
     scope: 'project',
+    rulePath: () => path.join(process.cwd(), '.clinerules', 'lakonai.md'),
     detect: () => fs.existsSync(path.join(process.cwd(), '.clinerules')),
     install: ({ rule, id }) => upsertBlock(id, path.join(process.cwd(), '.clinerules', 'lakonai.md'), rule),
     uninstall: () => {
@@ -131,10 +140,11 @@ const PLATFORMS = [
     id: 'gemini',
     label: 'Gemini CLI',
     scope: 'global',
+    rulePath: (home) => path.join(home, '.gemini', 'GEMINI.md'),
     detect: (home) => dirExists(path.join(home, '.gemini')),
     install: ({ home, rule, id }) => upsertBlock(id, path.join(home, '.gemini', 'GEMINI.md'), rule),
     uninstall: ({ home }) => stripBlock(path.join(home, '.gemini', 'GEMINI.md')),
   },
 ];
 
-module.exports = { list: () => PLATFORMS, revertPlatform };
+module.exports = { list: () => PLATFORMS, revertPlatform, hasBlock };

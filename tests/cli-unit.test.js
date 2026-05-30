@@ -236,6 +236,24 @@ test('main: compress — dry-run report and missing-file error', async () => {
   assert.match(out(), /written; backup \.bak/);
 });
 
+test('main: doctor renders a per-platform report', async () => {
+  process.argv = ['node', 'lakonai', 'doctor'];
+  await withCapture(() => cli.main());
+  assert.match(out(), /lakonai doctor/);
+  assert.match(out(), /Claude Code/);
+});
+
+test('main: shell-init / shell-uninit print the snippet and removal note', async () => {
+  process.argv = ['node', 'lakonai', 'shell-init'];
+  await withCapture(() => cli.main());
+  assert.match(out(), /LAKON_SHELL/);
+  assert.match(out(), /lakonai:shell:begin/);
+
+  process.argv = ['node', 'lakonai', 'shell-uninit'];
+  await withCapture(() => cli.main());
+  assert.match(out(), /Remove the block/);
+});
+
 test('maybePrintUpdateHint path via gain when an update is cached', async () => {
   const vc = require('../src/hooks/version-check');
   const orig = vc.getCachedUpdate;

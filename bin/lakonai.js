@@ -198,6 +198,25 @@ async function main() {
     process.stdout.write(`${r.file}: ${r.before} → ${r.after} tokens (-${r.saved}%, ${r.mode})${tail}\n`);
     return;
   }
+  if (first === 'doctor') {
+    const doctor = require('../src/doctor');
+    process.stdout.write(doctor.format(doctor.report()));
+    return;
+  }
+  if (first === 'shell-init') {
+    const { snippet } = require('../src/shell');
+    process.stdout.write(
+      '# Add to your shell profile (~/.bashrc / ~/.zshrc), then set LAKON_SHELL=1\n' +
+        '# in the env your agent runs commands in. Experimental — read-only commands only.\n' +
+        snippet()
+    );
+    return;
+  }
+  if (first === 'shell-uninit') {
+    const { MARK_BEGIN, MARK_END } = require('../src/shell');
+    process.stdout.write(`Remove the block between\n  ${MARK_BEGIN}\n  ${MARK_END}\nfrom your shell profile (or unset LAKON_SHELL).\n`);
+    return;
+  }
 
   runAndFilter(first, rest);
 }

@@ -198,6 +198,8 @@ saved:    85%
 | `lakonai reset`                      | Wipe the savings log                                                  |
 | `lakonai mode [lite\|full\|ultra]`   | Show or set terse intensity (default `full`)                          |
 | `lakonai compress <file> [--llm] [--dry-run]` | Shrink a memory `.md` (offline heuristic, or `--llm` via your `claude` CLI) |
+| `lakonai doctor`                     | Per-platform health: CLI on PATH, rule installed, hooks registered    |
+| `lakonai shell-init` / `shell-uninit` | Print an opt-in shell wrapper (auto-filter read-only cmds when `LAKON_SHELL=1`) |
 | `lakonai version` / `--version` / `-v` | Print the installed lakonai version                                 |
 
 ---
@@ -307,6 +309,27 @@ Each profile gets its own independent install. `lakonai uninstall` / `lakonai re
 | Windsurf        | project² | `.windsurf/rules/lakonai.md` in the current dir                                                        |
 | Cline           | project² | `.clinerules/lakonai.md` in the current dir                                                            |
 
+### What each agent actually gets (honest capability matrix)
+
+The powerful input-side features (shell-output filtering, Read/Grep guards,
+auto-learning, per-turn reinforcement) are **hooks — they run on Claude Code
+only**. Everywhere else, lakonai delivers the terse rule, and shell filtering
+happens by **the model prefixing `lakonai`** (the rule tells it to) or via the
+opt-in `lakonai shell-init` wrapper. Honest matrix:
+
+| Agent       | Terse rule | Shell filter            | Read/Grep guard | Auto-learning | Reinforcement | `/lakonai:*` + subagents |
+|-------------|:---------:|-------------------------|:---------------:|:-------------:|:-------------:|:-------------:|
+| Claude Code | ✅ | ✅ automatic (hook)        | ✅ | ✅ | ✅ | ✅ |
+| Codex CLI   | ✅ | ⚠️ via rule / shell-init  | ❌ | ❌ | ❌ | ❌ |
+| Cursor      | ✅ | ⚠️ via rule / shell-init  | ❌ (rule) | ❌ | ❌ | ❌ |
+| Windsurf    | ✅ | ⚠️ via rule / shell-init  | ❌ (rule) | ❌ | ❌ | ❌ |
+| Cline       | ✅ | ⚠️ via rule / shell-init  | ❌ (rule) | ❌ | ❌ | ❌ |
+| Gemini CLI  | ✅ | ⚠️ via rule / shell-init  | ❌ (rule) | ❌ | ❌ | ❌ |
+
+⚠️ = the model has to cooperate (prefix `lakonai`) or you opt into the shell
+wrapper. Run `lakonai doctor` to see, per platform, what's actually active on your
+machine.
+
 ¹ "Claude Code" covers **every** Claude Code frontend — terminal CLI, VS Code extension, JetBrains plugin, desktop app. All read the same `~/.claude/CLAUDE.md` + `~/.claude/settings.json`, so one install lights up all of them.
 
 ² Project-scoped tools only read rules from the current directory, so `lakonai install` skips them by default to avoid scattering files across your repos. Add `--here` (or use `--project`) when you actually want them in the current dir.
@@ -377,7 +400,7 @@ npm run test:coverage:check       # enforce the coverage threshold
 node bin/lakonai.js --help
 ```
 
-Suite: **285 tests**. Coverage gate: **100% lines / 100% branches / 100% functions / 100% statements**. Zero runtime dependencies. Node ≥ 18.
+Suite: **294 tests**. Coverage gate: **100% lines / 100% branches / 100% functions / 100% statements**. Zero runtime dependencies. Node ≥ 18.
 
 ---
 

@@ -1,0 +1,6 @@
+# OUTPUT benchmark prompts — one coding question per line (lines starting with # are ignored)
+Why is my React component re-rendering on every state change?
+Explain the difference between git rebase and git merge.
+Review this function for bugs: function add(a,b){return a-b}
+Refactor a callback-based function to async/await — what changes?
+What causes a PostgreSQL connection pool to exhaust under load?
