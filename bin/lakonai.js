@@ -63,6 +63,16 @@ Update notifications:
 `;
 
 function runAndFilter(cmd, args) {
+  // Universal Read-guard: refuse junk reads (lockfiles/node_modules) done via the
+  // shell (`cat pnpm-lock.yaml`) on ANY agent that uses the shim — same deny rules
+  // as the Claude Read hook, no platform hook required.
+  const denied = require('../src/shim-guard').check(cmd, args);
+  if (denied) {
+    process.stdout.write(`lakonai: skipped ${denied.path} — ${denied.reason}\n`);
+    tracking.record({ cmd, args, rawTokens: 0, filteredTokens: 0 });
+    process.exit(0);
+  }
+
   const merge = needsStderr(cmd, args);
   const stdio = merge ? ['inherit', 'pipe', 'pipe'] : ['inherit', 'pipe', 'inherit'];
   // Strip the shim dir from PATH so spawning `cmd` resolves the real system

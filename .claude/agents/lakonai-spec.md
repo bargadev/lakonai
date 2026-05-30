@@ -98,9 +98,17 @@ block (`MARK_BEGIN`/`MARK_END`) in `.zshrc`/`.bashrc`/`.profile`. Each shim exec
 `lakonai <cmd> "$@"`. **Recursion guard:** `runAndFilter` (bin/lakonai.js) spawns
 the real command with `shim.pathWithoutShim(process.env)` so PATH excludes the
 shim dir — verified by an end-to-end test. Opt-in (edits shell rc); only reaches
-agents that inherit the shell PATH. Read/Grep guards + auto-learning stay
-Claude-only (they act on the agent's own tool calls → need a call-rewriting hook;
-Codex blocked upstream, openai/codex#18491).
+agents that inherit the shell PATH.
+
+**Universal Read-guard on the shell path** (`src/shim-guard.js`). `runAndFilter`
+checks read commands (cat/head/tail/less/more/bat) against `isDeniedPath` (reused
+from `read-guard.js`) BEFORE spawning; a denied path (lockfile/node_modules/build
+artifact) is skipped with a one-line reason + a 0-token tracking entry. Via the
+shim this makes junk-read refusal automatic on every agent for shell reads. The
+agent's own non-shell Read tool still needs a hook (Claude only). Auto-learning
+stays Claude-only (needs the agent's full command stream via an end-of-turn hook;
+Codex/Cursor/Gemini could host it, Windsurf/Cline lack the event) — and is largely
+moot elsewhere since the shim already filters the standard heavy commands.
 
 **Automatic MCP catalog compression.** `src/mcp-shrink.js` compresses MCP
 tool/prompt/resource descriptions offline; `src/install/mcp.js` auto-wraps stdio

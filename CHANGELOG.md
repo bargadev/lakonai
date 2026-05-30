@@ -6,6 +6,19 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-05-30
+
+### Added
+- **Universal Read-guard on the shell path** (`src/shim-guard.js`). `lakonai cat`
+  /`head`/`tail`/`less`/`more`/`bat` now refuse junk reads (lockfiles,
+  `node_modules/…`, build artifacts) using the **same deny rules as the Claude
+  Read hook**. Combined with the shim, junk-read protection is now automatic on
+  **every agent** for shell-mediated reads (`cat pnpm-lock.yaml` → skipped with a
+  one-line reason), not just Claude Code's Read tool. An agent's own non-shell
+  Read tool still needs a hook (Claude only); auto-learning stays Claude-only (it
+  needs the agent's command stream) and is largely moot elsewhere since the shim
+  already filters the standard heavy commands.
+
 ## [0.13.0] - 2026-05-30
 
 ### Added
