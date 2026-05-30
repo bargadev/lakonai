@@ -9,8 +9,10 @@
 </p>
 
 <p align="center">
-  <em>Spartan replies for AI agents. Less words. Win wars.</em>
+  <em>Spartan replies for AI agents.</em>
 </p>
+
+<h3 align="center">Speak less. Ship more.</h3>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/lakonai"><img src="https://img.shields.io/npm/v/lakonai?color=0F0F0F&label=npm" alt="npm" /></a>
@@ -436,5 +438,5 @@ MIT. See [LICENSE](LICENSE).
 ---
 
 <p align="center">
-  <sub>Speak less. Ship more.</sub>
+  <strong>Speak less. Ship more.</strong>
 </p>
