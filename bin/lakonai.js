@@ -217,6 +217,11 @@ async function main() {
     process.stdout.write(`Remove the block between\n  ${MARK_BEGIN}\n  ${MARK_END}\nfrom your shell profile (or unset LAKON_SHELL).\n`);
     return;
   }
+  /* istanbul ignore next -- long-running stdio MCP proxy; logic tested via src/shrink */
+  if (first === 'shrink') {
+    require('../src/shrink').runProxy(rest);
+    return;
+  }
 
   runAndFilter(first, rest);
 }

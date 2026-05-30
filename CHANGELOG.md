@@ -4,6 +4,20 @@ All notable changes to **lakonai** are recorded here. The version log lives in
 this file (no git tags). Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semver.
 
+## [0.11.0] - 2026-05-30
+
+### Added
+- **`lakonai shrink <mcp-server-cmd>`** — a stdio MCP proxy that compresses tool/
+  prompt/resource `description` fields before they enter context (offline, regex;
+  `src/shrink.js`). Requests and tool-call results pass through untouched; code,
+  URLs, paths and identifiers preserved exactly.
+
+### Changed
+- The MCP shrinker is now **bundled into lakonai** as a subcommand instead of a
+  separate `lakonai-shrink` package — one install, one version, reuses the terse
+  compressor. Fixed a description-compression bug (identifier over-matching +
+  placeholder restore) found while folding it in.
+
 ## [0.10.0] - 2026-05-30
 
 ### Added
