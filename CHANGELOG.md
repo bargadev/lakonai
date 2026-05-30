@@ -4,6 +4,29 @@ All notable changes to **lakonai** are recorded here. The version log lives in
 this file (no git tags). Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semver.
 
+## [0.10.0] - 2026-05-30
+
+### Added
+- **`lakonai doctor`** — per-platform health check: CLI on PATH, rule installed,
+  hooks registered (`src/doctor.js`).
+- **Honest capability matrix** in the README: exactly what each of the 6 agents
+  gets (hooks are Claude-Code-only; elsewhere it's the rule + `lakonai` prefix).
+- **`lakonai shell-init` / `shell-uninit`** — opt-in shell wrapper that
+  auto-filters read-only commands when `LAKON_SHELL=1`, for platforms without a
+  hook API (`src/shell.js`).
+- **Terse subagents** (cavecrew-style) installed on Claude Code:
+  `lakonai-investigator` / `lakonai-builder` / `lakonai-reviewer`, with compact
+  output contracts (`src/install/claude-agents.js`).
+- **OUTPUT benchmark harness** — `scripts/bench-output.js` measures how much less
+  the model writes under the rule via your own `claude` CLI (3 arms: baseline /
+  concise / lakonai; honest delta = vs concise), and `scripts/bench-measure.js`
+  aggregates a committed snapshot offline (CI-safe). `npm run bench` /
+  `bench:output` / `bench:measure`.
+
+### Related (separate package)
+- **`lakonai-shrink`** — a standalone, zero-dep stdio MCP proxy that compresses
+  tool/prompt/resource `description` fields (offline). Ships independently.
+
 ## [0.9.0] - 2026-05-29
 
 ### Added (caveman-inspired, output/memory side)

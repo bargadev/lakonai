@@ -149,10 +149,20 @@ src/filters/utils.js        stripAnsi, truncateLines, dedupConsecutive, groupByD
 src/learn.js                auto-learning (transcript → stats → promote)
 src/mode.js                 terse intensity mode (lite/full/ultra)
 src/compress.js             memory-file compression (heuristic + --llm via claude CLI)
+src/doctor.js               `lakonai doctor` — per-platform health (CLI/rule/hooks)
+src/shell.js                opt-in shell wrapper (lakonai shell-init), gated by LAKON_SHELL
 src/hooks/*.js              Claude Code hooks (incl. prompt-reinforce)
-src/install/*.js            installer (hooks as launchers, slash commands)
-scripts/bench.js            compression benchmark + regression corpus
+src/install/*.js            installer (hooks as launchers, slash commands, subagents)
+src/install/claude-agents.js  terse cavecrew subagents (investigator/builder/reviewer)
+scripts/bench.js            INPUT compression benchmark + regression corpus
+scripts/bench-output.js     OUTPUT benchmark via the user's claude CLI (3 arms)
+scripts/bench-measure.js    aggregate the OUTPUT snapshot offline (CI-safe)
 ```
+
+Cross-platform reality: hooks (filtering/learning/guards) are **Claude Code only**.
+Other platforms get the rule + `lakonai` prefix (compliance) or the opt-in shell
+wrapper. `lakonai doctor` shows what's active. The `lakonai-shrink` MCP proxy is a
+SEPARATE package (sibling dir), not part of this package's coverage.
 
 When unsure, read the file before answering — never guess a path or symbol that
 might have moved. After any change, run the suite and keep coverage at 100%.
