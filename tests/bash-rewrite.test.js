@@ -2,12 +2,24 @@
 
 const assert = require('node:assert/strict');
 const { spawnSync } = require('node:child_process');
+const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 
 const HOOK = path.join(__dirname, '..', 'src', 'hooks', 'bash-rewrite.js');
 
+// The hook subprocess reads auto-learned commands from LAKON_HOME (defaults to
+// the real ~/.lakon). Point it at an empty temp dir so assertions about the
+// "unsupported" set aren't broken by whatever this machine has learned (e.g.
+// `echo`). The subprocess inherits env, so override it there too.
+const LAKON_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'lakhome-bashrw-'));
+
 function run(input) {
-  const res = spawnSync('node', [HOOK], { input: JSON.stringify(input), encoding: 'utf8' });
+  const res = spawnSync('node', [HOOK], {
+    input: JSON.stringify(input),
+    encoding: 'utf8',
+    env: { ...process.env, LAKON_HOME },
+  });
   return res.stdout;
 }
 

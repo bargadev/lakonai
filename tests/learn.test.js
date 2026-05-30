@@ -151,3 +151,59 @@ test('a learned command routes through the conservative auto filter', () => {
   assert.equal(filters.filterCommand('mytool', ['run'], 'dup\ndup\ndup\nend'), 'dup (×3)\nend');
   learn._resetCache();
 });
+
+// --- analyzeLog / maybeLearnFromLog (platform-agnostic, off the tracking log) ---
+
+function writeLog(home, entries) {
+  fs.writeFileSync(
+    path.join(home, 'log.jsonl'),
+    entries.map((e) => JSON.stringify(e)).join('\n') + '\n'
+  );
+}
+
+test('analyzeLog promotes a heavy, frequent non-builtin command from the log', () => {
+  const home = freshHome();
+  writeLog(home, [
+    { t: 1, cmd: 'terraform', raw: 500, out: 50 },
+    { t: 2, cmd: 'terraform', raw: 500, out: 50 },
+    { t: 3, cmd: 'terraform', raw: 500, out: 50 },
+    { t: 4, cmd: 'session', input_tokens: 9 }, // ignored
+  ]);
+  learn.analyzeLog((c) => false);
+  learn._resetCache();
+  assert.ok(learn.learnedCommands().has('terraform'));
+});
+
+test('analyzeLog skips builtins and light commands', () => {
+  const home = freshHome();
+  writeLog(home, [
+    { t: 1, cmd: 'git', raw: 999, out: 10 }, // builtin → skip
+    { t: 2, cmd: 'rare', raw: 10, out: 5 }, // too light / too few
+  ]);
+  learn.analyzeLog((c) => c === 'git');
+  learn._resetCache();
+  assert.equal(learn.learnedCommands().has('git'), false);
+  assert.equal(learn.learnedCommands().has('rare'), false);
+});
+
+test('analyzeLog no-ops with LAKON_NO_LEARN', () => {
+  const home = freshHome();
+  process.env.LAKON_NO_LEARN = '1';
+  writeLog(home, [{ t: 1, cmd: 'x', raw: 999 }, { t: 2, cmd: 'x', raw: 999 }, { t: 3, cmd: 'x', raw: 999 }]);
+  learn.analyzeLog(() => false);
+  learn._resetCache();
+  assert.equal(learn.learnedCommands().has('x'), false);
+});
+
+test('maybeLearnFromLog throttles to once per window', () => {
+  const home = freshHome();
+  writeLog(home, [
+    { t: 1, cmd: 'pulumi', raw: 500 },
+    { t: 2, cmd: 'pulumi', raw: 500 },
+    { t: 3, cmd: 'pulumi', raw: 500 },
+  ]);
+  const now = 1_000_000;
+  assert.equal(learn.maybeLearnFromLog(() => false, now), true); // first runs
+  assert.equal(learn.maybeLearnFromLog(() => false, now + 1000), false); // within TTL
+  assert.equal(learn.maybeLearnFromLog(() => false, now + 3700_000), true); // after TTL
+});

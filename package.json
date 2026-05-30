@@ -1,6 +1,6 @@
 {
   "name": "lakonai",
-  "version": "0.11.0",
+  "version": "0.15.0",
   "description": "lakonai — save AI context tokens. Filters & compresses CLI output (git, ls, grep, find, test runners, lint/build, docker/kubectl/aws) before it reaches Claude Code, Codex, Cursor, Windsurf, Cline or Gemini — and learns to filter new commands automatically the more you use it.",
   "keywords": [
     "claude",
@@ -48,9 +48,7 @@
     "test": "jest",
     "test:coverage": "jest --coverage",
     "test:coverage:check": "jest --coverage",
-    "bench": "node scripts/bench.js",
-    "bench:output": "node scripts/bench-output.js",
-    "bench:measure": "node scripts/bench-measure.js"
+    "bench": "node -e \"process.stdout.write(require('./src/bench').format(require('./src/bench').runBench()))\""
   },
   "engines": {
     "node": ">=18"

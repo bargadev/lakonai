@@ -82,25 +82,74 @@ rtk only *suggests* via a manual command; lakonai *activates by itself*.
   NEVER drop lines by guessing they're noise — that could hide a real error.
 - Disable with `LAKON_NO_LEARN=1` (also gated by `LAKON_NO_TRACK=1`).
 
-## Terse output side (caveman-inspired)
+## Terse output side
 
-- **Intensity modes** (`src/mode.js`): `lakonai mode <lite|full|ultra>`, persisted
-  at `~/.lakon/mode`, override via `$LAKON_MODE`; default `full`.
-- **Per-turn reinforcement** (`src/hooks/prompt-reinforce.js`, UserPromptSubmit):
-  re-injects the terse reminder for the active mode each turn so the model doesn't
-  drift verbose. Opt out `LAKON_NO_REINFORCE=1`.
-- **Memory compress** (`src/compress.js`): `lakonai compress <file> [--llm] [--dry-run]`.
-  Default heuristic = offline, near-lossless (blank/whitespace collapse, code
-  preserved). `--llm` rewrites prose via the user's `claude` CLI (`claude --print`)
-  — never a separate API key/dep. Backs up to `<file>.bak`.
-- The shipped rule lives in `src/rules/lakonai.md` (levels + auto-clarity carve-outs).
+The shipped terse rule lives in `src/rules/lakonai.md` (the terse rules +
+auto-clarity carve-outs). It's installed into each platform's config by the
+installer. No `mode` or subagent commands — removed to keep lakonai to one simple
+command set (`install` → done).
+
+**Universal PATH shim** (`src/install/shim.js`, command `lakonai shim [--off]`).
+The one mechanism that makes shell-output filtering automatic on agents WITHOUT a
+call-rewriting hook (Codex/Cursor/Windsurf/Cline/Gemini). Writes executable
+wrappers (`WRAPPED` = ls/grep/rg/ag/find/cat/tree/head — read-only/one-shot only;
+NO git/tail) into `~/.lakon/shim/` and prepends that dir to PATH via a managed
+block (`MARK_BEGIN`/`MARK_END`) in `.zshrc`/`.bashrc`/`.profile`. Each shim execs
+`lakonai <cmd> "$@"`. **Recursion guard:** `runAndFilter` (bin/lakonai.js) spawns
+the real command with `shim.pathWithoutShim(process.env)` so PATH excludes the
+shim dir — verified by an end-to-end test. Opt-in (edits shell rc); only reaches
+agents that inherit the shell PATH.
+
+**Universal Read-guard on the shell path** (`src/shim-guard.js`). `runAndFilter`
+checks read commands (cat/head/tail/less/more/bat) against `isDeniedPath` (reused
+from `read-guard.js`) BEFORE spawning; a denied path (lockfile/node_modules/build
+artifact) is skipped with a one-line reason + a 0-token tracking entry. Via the
+shim this makes junk-read refusal automatic on every agent for shell reads. The
+agent's own non-shell Read tool still needs a hook (Claude only). Auto-learning runs on
+every agent via `learn.analyzeLog` / `maybeLearnFromLog` (called from
+`runAndFilter`, throttled hourly off `~/.lakon/log.jsonl`), in addition to the
+Claude-transcript learner (`analyzeTranscript`, wider window). So all four
+input-side features are automatic on every agent for shell-mediated work; only
+guarding the agent's OWN non-shell Read tool stays Claude-only (needs a
+call-rewriting hook).
+
+**Automatic MCP catalog compression.** `src/mcp-shrink.js` compresses MCP
+tool/prompt/resource descriptions offline; `src/install/mcp.js` auto-wraps stdio
+servers in `~/.claude.json` on install (`lakonai __mcp <cmd>`), backed up &
+reversible (opt-out `LAKON_NO_MCP=1`). It's automatic (no command); the `__mcp`
+subcommand is internal. Never touches requests or tool-call results.
+
+**Manual memory-file compression** (`src/mem-compress.js` + `src/mem-llm.js`).
+Unlike the MCP path, this rewrites *user-authored* memory (CLAUDE.md, notes), so it
+is NEVER automatic and NEVER regex — prose needs semantic rewriting, which only an
+LLM does well (regex managed ~8%; an LLM ~35%). `lakonai compress-memory <file>`
+calls **a local agent CLI the user already has** — no API key. `mem-llm.js` holds
+the provider registry (`PROVIDERS`): `claude --print` (Claude Code), `gemini -p`
+(Gemini CLI), `codex exec -` (Codex), `cursor-agent -p` (Cursor). `pickProvider`
+takes `LAKONAI_MEM_CLI` if set (must be on PATH) else the first on PATH in that
+order; `onPath` is a pure PATH scan. `LAKONAI_MEM_MODEL` overrides the model.
+Windsurf/Cline have no headless CLI, so a user there uses whichever other CLI is
+installed. `compressWith`/`fixWith` build prompts (`buildCompressPrompt` keeps
+code/paths/URLs/headings/negations) and call `callAgent` (stdin vs arg per
+provider).
+
+`compressFile` (in `mem-compress.js`) is the safety harness around the engine:
+requires a `compress` fn, refuses backups and sensitive filenames (remote only —
+bytes cross a model boundary), refuses to clobber an existing `<name>.original.md`,
+writes that backup first, then **validates** every code-fence/inline-code/URL
+survives byte-for-byte (`validate` is the only thing keeping the `INLINE`/`URL`
+regexes) — on a miss it runs ONE `fix` pass and, if still failing, aborts without
+writing. `lakonai revert-memory <file>` restores from the backup. `install` offers
+a one-time opt-in prompt (TTY only) to compress a detected CLAUDE.md
+(`pickMemoryTarget` → project then user-level). Why manual: compressing authored
+instructions is lossy and must stay auditable + in the user's control — the same
+reason it is not a SessionStart auto-rewrite.
 
 ## Hooks (`src/hooks/`)
 
 - `bash-rewrite.js` — PreToolUse; rewrites supported Bash commands to `lakonai …`.
 - `read-guard.js` — denies Reads of build/dep dirs & lockfiles; caps huge files.
 - `grep-guard.js` — auto-caps Grep `head_limit`.
-- `prompt-reinforce.js` — UserPromptSubmit; per-turn terse reminder.
 - `session-start.js` — update notice. `stop-hook.js` — records session usage AND
   runs the learner. `throttle.js` — rate-limits notices.
 - Hook entry points guard runtime with `if (require.main === module)` so they can
@@ -108,17 +157,17 @@ rtk only *suggests* via a manual command; lakonai *activates by itself*.
   `/* istanbul ignore next */`.
 - **Installed hooks are launchers, not copies.** `claude-hook.js` writes a tiny
   `require('module')._load(<pkg hook abs path>, null, true)` shim into
-  `~/.claude/hooks/`, so a hook's relative requires (`../filters`, `../learn`,
-  `../mode`) resolve inside the package. Never go back to flat-copying hooks that
-  require the shared graph — it breaks at runtime.
+  `~/.claude/hooks/`, so a hook's relative requires (`../filters`, `../learn`)
+  resolve inside the package. Never go back to flat-copying hooks that require the
+  shared graph — it breaks at runtime.
 
 ## Installer (`src/install/`)
 
 `index.js` orchestrates; `platforms.js` lists targets; `claude-hook.js` writes the
 hook launchers + merges `settings.json`; `claude-commands.js` writes the
-`/lakonai:*` slash commands (gain/reset/inspect/commit/review); `paths.js` resolves
-home via `homedir()` = `process.env.HOME || os.homedir()` (NOT bare `os.homedir()`
-— that ignores a test-set HOME under Jest). `backup.js` backs up before writing.
+`/lakonai:gain` slash command; `paths.js` resolves home via `homedir()` =
+`process.env.HOME || os.homedir()` (NOT bare `os.homedir()` — that ignores a
+test-set HOME under Jest). `backup.js` backs up before writing.
 
 ## Benchmark (`scripts/bench.js`)
 
@@ -139,7 +188,7 @@ regression fails CI.
 ## File map
 
 ```
-bin/lakonai.js              CLI entry (run+filter, install, gain, inspect, mode, compress)
+bin/lakonai.js              CLI entry (run+filter, install, gain, doctor, version)
 src/filters/index.js        dispatch
 src/filters/{git,ls,cat,grep,find,test}.js   JS filters
 src/filters/engine.js       declarative pipeline engine
@@ -147,27 +196,19 @@ src/filters/defs.js         declarative filter definitions (data)
 src/filters/auto.js         conservative auto-learned filter
 src/filters/utils.js        stripAnsi, truncateLines, dedupConsecutive, groupByDir
 src/learn.js                auto-learning (transcript → stats → promote)
-src/mode.js                 terse intensity mode (lite/full/ultra)
-src/compress.js             memory-file compression (heuristic + --llm via claude CLI)
 src/doctor.js               `lakonai doctor` — per-platform health (CLI/rule/hooks)
-src/shell.js                opt-in shell wrapper (lakonai shell-init), gated by LAKON_SHELL
-src/shrink.js               `lakonai shrink` — stdio MCP proxy, compresses tool descriptions
-src/hooks/*.js              Claude Code hooks (incl. prompt-reinforce)
-src/install/*.js            installer (hooks as launchers, slash commands, subagents)
-src/install/claude-agents.js  terse cavecrew subagents (investigator/builder/reviewer)
-scripts/bench.js            INPUT compression benchmark + regression corpus
-scripts/bench-output.js     OUTPUT benchmark via the user's claude CLI (3 arms)
-scripts/bench-measure.js    aggregate the OUTPUT snapshot offline (CI-safe)
+src/bench.js                self-contained filter benchmark (shown by `gain` when empty)
+src/mcp-shrink.js           MCP description compressor + `__mcp` stdio proxy
+src/hooks/*.js              Claude Code hooks
+src/install/*.js            installer (hooks as launchers, /lakonai:gain, MCP auto-wrap)
+src/install/mcp.js          auto-wrap MCP servers in ~/.claude.json (reversible)
 ```
 
-Cross-platform reality: hooks (filtering/learning/guards) are **Claude Code only**.
-Other platforms get the rule + `lakonai` prefix (compliance) or the opt-in shell
-wrapper. `lakonai doctor` shows what's active.
-
-MCP description shrinking is bundled: `src/shrink.js` (`lakonai shrink <upstream>`)
-is a stdio MCP proxy that compresses tool/prompt/resource descriptions offline.
-The pure logic (`shrink`/`shrinkMessage`/`transformLine`) is tested; the proxy
-loop (`runProxy`) is the istanbul-ignored I/O shell.
+Visible user commands: `install`, `uninstall`, `revert`, `backups`, `gain`,
+`doctor`, `version`. Everything else is automatic after install. Cross-platform
+reality: hooks (filtering/learning/guards) are **Claude Code only**; other
+platforms get the rule + `lakonai` prefix (compliance). `lakonai doctor` shows
+what's active.
 
 When unsure, read the file before answering — never guess a path or symbol that
 might have moved. After any change, run the suite and keep coverage at 100%.

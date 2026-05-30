@@ -3,7 +3,7 @@
 
 const { spawnSync } = require('child_process');
 const { filterCommand, isSupported, needsStderr, countTokensApprox } = require('../src/filters');
-const { install, uninstall, revert, listPlatforms, backupsReport } = require('../src/install');
+const { install, uninstall, revert, backupsReport } = require('../src/install');
 const tracking = require('../src/tracking');
 const versionCheck = require('../src/hooks/version-check');
 
@@ -21,13 +21,30 @@ Usage:
   lakonai uninstall          Strip the lakonai block (keeps rest of file)
   lakonai revert [--only <p>] Restore files to pre-install state from backup
   lakonai backups            Show backup history per platform
-  lakonai list               Show supported platforms
+
+  lakonai compress-memory <file>
+                             Compress a memory file (CLAUDE.md, notes) in place,
+                             saving a <name>.original.md backup first. Manual &
+                             opt-in — rewrites your authored text (lossy) using a
+                             local AI CLI you already have (Claude/Gemini/Codex/
+                             Cursor — no API key). Override with LAKONAI_MEM_CLI.
+  lakonai revert-memory <file>
+                             Restore <file> from its .original.md backup.
+
+  lakonai shim [--off]       Enable (or disable) the universal PATH shim — makes
+                             ls/grep/rg/ag/find/cat/tree/head filtering AUTOMATIC
+                             for EVERY agent (Codex/Cursor/Windsurf/Cline/Gemini),
+                             not just the ones with a hook API. Prepends
+                             ~/.lakon/shim to PATH in your shell rc.
 
   lakonai gain               Show token savings (hour / day / week / month / all)
-  lakonai inspect <cmd> ...  Run <cmd> once and show raw vs filtered (no tracking)
-  lakonai reset              Wipe the savings log
+  lakonai doctor             Per-platform health: CLI on PATH, rule, hooks
   lakonai version            Print the installed lakonai version
   lakonai --help             This help
+
+After \`lakonai install\` everything is automatic — your agent's commands are
+filtered, junk reads are blocked, and new noisy commands get learned. You rarely
+need any command but \`gain\` (to see the savings) and \`doctor\` (to check it).
 
 Supported filters:
   files/search   git (log/status/diff/show), ls, tree, cat, head, tail, grep, rg, ag, find
@@ -46,9 +63,23 @@ Update notifications:
 `;
 
 function runAndFilter(cmd, args) {
+  // Universal Read-guard: refuse junk reads (lockfiles/node_modules) done via the
+  // shell (`cat pnpm-lock.yaml`) on ANY agent that uses the shim — same deny rules
+  // as the Claude Read hook, no platform hook required.
+  const denied = require('../src/shim-guard').check(cmd, args);
+  if (denied) {
+    process.stdout.write(`lakonai: skipped ${denied.path} — ${denied.reason}\n`);
+    tracking.record({ cmd, args, rawTokens: 0, filteredTokens: 0 });
+    process.exit(0);
+  }
+
   const merge = needsStderr(cmd, args);
   const stdio = merge ? ['inherit', 'pipe', 'pipe'] : ['inherit', 'pipe', 'inherit'];
-  const child = spawnSync(cmd, args, { encoding: 'utf8', stdio });
+  // Strip the shim dir from PATH so spawning `cmd` resolves the real system
+  // binary, not the lakonai shim that may have invoked us (prevents recursion).
+  const { pathWithoutShim } = require('../src/install/shim');
+  const env = { ...process.env, PATH: pathWithoutShim(process.env) };
+  const child = spawnSync(cmd, args, { encoding: 'utf8', stdio, env });
   if (child.error) {
     process.stderr.write(`lakonai: ${child.error.message}\n`);
     process.exit(127);
@@ -67,31 +98,76 @@ function runAndFilter(cmd, args) {
     filteredTokens: countTokensApprox(filtered),
   });
 
+  // Auto-learning off the universal log (throttled hourly) — runs on EVERY agent,
+  // not just Claude Code's transcript. Never let it break the command.
+  try {
+    require('../src/learn').maybeLearnFromLog((c) => isSupported(c));
+    /* istanbul ignore next */
+  } catch {
+    // learning is best-effort
+  }
+
   /* istanbul ignore next */
   process.exit(child.status ?? 0);
 }
 
-function inspectCmd(rest) {
-  if (!rest.length) {
-    process.stderr.write('lakonai inspect: missing command\n');
-    process.exit(2);
+function runShim(args) {
+  const shim = require('../src/install/shim');
+  const off = args.includes('--off');
+  if (off) {
+    const { touched } = shim.uninstall();
+    process.stdout.write(`✅ shim removed (${shim.shimDir()})\n`);
+    if (touched.length) process.stdout.write(`   cleaned PATH block from: ${touched.join(', ')}\n`);
+    process.stdout.write('   Restart your shell (or your agent) for it to take effect.\n');
+    return;
   }
-  const [cmd, ...args] = rest;
-  const merge = needsStderr(cmd, args);
-  const child = spawnSync(cmd, args, { encoding: 'utf8' });
-  /* istanbul ignore next -- defensive empty-stream fallbacks */
-  const raw = merge ? (child.stdout || '') + (child.stderr || '') : child.stdout || '';
-  const filtered = isSupported(cmd) ? filterCommand(cmd, args, raw) : raw;
-  const rawTokens = countTokensApprox(raw);
-  const newTokens = countTokensApprox(filtered);
-  /* istanbul ignore next */
-  const saved = rawTokens === 0 ? 0 : Math.round((1 - newTokens / rawTokens) * 100);
+  const { dir, touched } = shim.install();
   process.stdout.write(
-    `cmd:      ${cmd} ${args.join(' ')}\n` +
-      `raw:      ${rawTokens} tokens (${raw.length} bytes)\n` +
-      `filtered: ${newTokens} tokens (${filtered.length} bytes)\n` +
-      `saved:    ${saved}%\n`
+    `✅ universal shim enabled — ${shim.WRAPPED.join('/')} now filtered for ANY agent that inherits PATH.\n` +
+      `   shims: ${dir}\n`
   );
+  if (touched.length) {
+    process.stdout.write(`   PATH prepended in: ${touched.join(', ')}\n`);
+  } else {
+    process.stdout.write(`   PATH block already present.\n`);
+  }
+  process.stdout.write(
+    '   Restart your shell (or your agent) for it to take effect. Disable: `lakonai shim --off`.\n'
+  );
+}
+
+function runMemory(cmd, args) {
+  const mem = require('../src/mem-compress');
+  const file = args.find((a) => !a.startsWith('--'));
+  if (!file) {
+    process.stderr.write(`lakonai: ${cmd} needs a file path. e.g. \`lakonai ${cmd} CLAUDE.md\`\n`);
+    process.exit(1);
+  }
+  try {
+    if (cmd === 'revert-memory') {
+      const { file: f, backup } = mem.revertFile(file);
+      process.stdout.write(`✅ restored ${f} from ${backup}\n`);
+      return;
+    }
+    // The compressor is whichever local AI CLI the user has (no API key).
+    const llm = require('../src/mem-llm');
+    const provider = llm.pickProvider();
+    process.stdout.write(`compressing ${file} with ${provider.bin} (${provider.platform})…\n`);
+    const res = mem.compressFile(file, {
+      tokenize: countTokensApprox,
+      compress: (orig) => llm.compressWith(orig, { provider }),
+      fix: (orig, comp, missing) => llm.fixWith(orig, comp, missing, { provider }),
+      remote: true,
+    });
+    const pct = res.beforeTokens ? Math.round((1 - res.afterTokens / res.beforeTokens) * 100) : 0;
+    process.stdout.write(
+      `✅ compressed ${res.file}: ${res.beforeTokens} → ${res.afterTokens} tokens (~${pct}% smaller)\n` +
+        `   backup: ${res.backup}\n   undo:   lakonai revert-memory ${res.file}\n`
+    );
+  } catch (err) {
+    process.stderr.write(`lakonai: ${err.message}\n`);
+    process.exit(1);
+  }
 }
 
 function printVersion() {
@@ -153,49 +229,23 @@ async function main() {
     process.stdout.write(backupsReport());
     return;
   }
-  if (first === 'list') {
-    process.stdout.write(listPlatforms().join('\n') + '\n');
+  if (first === 'compress-memory' || first === 'revert-memory') {
+    runMemory(first, rest);
+    return;
+  }
+  if (first === 'shim') {
+    runShim(rest);
     return;
   }
   if (first === 'gain' || first === 'stats') {
     process.stdout.write(tracking.report());
+    // No real usage yet? Show the reproducible filter benchmark as a preview.
+    if (!tracking.readEntries().length) {
+      const bench = require('../src/bench');
+      process.stdout.write('\nWhat the filters do (sample benchmark):\n' + bench.format(bench.runBench()));
+    }
     await versionCheck.checkForUpdate().catch(/* istanbul ignore next */ () => {});
     maybePrintUpdateHint();
-    return;
-  }
-  if (first === 'inspect') {
-    inspectCmd(rest);
-    return;
-  }
-  if (first === 'reset') {
-    const ok = tracking.reset();
-    process.stdout.write(ok ? 'lakonai: log cleared\n' : 'lakonai: nothing to clear\n');
-    return;
-  }
-  if (first === 'mode') {
-    const { getMode, setMode, MODES } = require('../src/mode');
-    if (!rest.length) {
-      process.stdout.write(`lakonai mode: ${getMode()}\n`);
-      return;
-    }
-    const m = setMode(rest[0]);
-    process.stdout.write(
-      m ? `lakonai mode set to ${m}\n` : `lakonai: unknown mode "${rest[0]}" (use ${MODES.join('/')})\n`
-    );
-    return;
-  }
-  if (first === 'compress') {
-    const { compressFile } = require('../src/compress');
-    const llm = rest.includes('--llm');
-    const dryRun = rest.includes('--dry-run');
-    const file = rest.find((a) => !a.startsWith('--'));
-    if (!file) {
-      process.stderr.write('lakonai compress: missing file\n');
-      process.exit(2);
-    }
-    const r = compressFile(file, { llm, dryRun });
-    const tail = r.written ? ' [written; backup .bak]' : ' [dry-run]';
-    process.stdout.write(`${r.file}: ${r.before} → ${r.after} tokens (-${r.saved}%, ${r.mode})${tail}\n`);
     return;
   }
   if (first === 'doctor') {
@@ -203,23 +253,9 @@ async function main() {
     process.stdout.write(doctor.format(doctor.report()));
     return;
   }
-  if (first === 'shell-init') {
-    const { snippet } = require('../src/shell');
-    process.stdout.write(
-      '# Add to your shell profile (~/.bashrc / ~/.zshrc), then set LAKON_SHELL=1\n' +
-        '# in the env your agent runs commands in. Experimental — read-only commands only.\n' +
-        snippet()
-    );
-    return;
-  }
-  if (first === 'shell-uninit') {
-    const { MARK_BEGIN, MARK_END } = require('../src/shell');
-    process.stdout.write(`Remove the block between\n  ${MARK_BEGIN}\n  ${MARK_END}\nfrom your shell profile (or unset LAKON_SHELL).\n`);
-    return;
-  }
-  /* istanbul ignore next -- long-running stdio MCP proxy; logic tested via src/shrink */
-  if (first === 'shrink') {
-    require('../src/shrink').runProxy(rest);
+  /* istanbul ignore next -- long-running stdio MCP proxy; logic tested via src/mcp-shrink */
+  if (first === '__mcp') {
+    require('../src/mcp-shrink').runProxy(rest);
     return;
   }
 
@@ -234,4 +270,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { runAndFilter, inspectCmd, printVersion, main, HELP };
+module.exports = { runAndFilter, printVersion, main, HELP };

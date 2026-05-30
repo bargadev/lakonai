@@ -5,6 +5,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 
+// Isolate the learned-commands store BEFORE requiring the hooks. bash-rewrite
+// freezes FILTERED_CMDS = supportedFirstWords() at module load, which reads
+// learn.learnedCommands() from LAKON_HOME (defaults to the real ~/.lakon). Point
+// it at an empty temp dir so the test sees only the built-in filtered set, not
+// whatever this machine happens to have auto-learned (e.g. `echo`).
+process.env.LAKON_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'lakhome-hooks-'));
+
 const bashRewrite = require('../src/hooks/bash-rewrite');
 const stopHook = require('../src/hooks/stop-hook');
 const grepGuard = require('../src/hooks/grep-guard');
