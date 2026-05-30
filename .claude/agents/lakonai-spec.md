@@ -151,6 +151,7 @@ src/mode.js                 terse intensity mode (lite/full/ultra)
 src/compress.js             memory-file compression (heuristic + --llm via claude CLI)
 src/doctor.js               `lakonai doctor` — per-platform health (CLI/rule/hooks)
 src/shell.js                opt-in shell wrapper (lakonai shell-init), gated by LAKON_SHELL
+src/shrink.js               `lakonai shrink` — stdio MCP proxy, compresses tool descriptions
 src/hooks/*.js              Claude Code hooks (incl. prompt-reinforce)
 src/install/*.js            installer (hooks as launchers, slash commands, subagents)
 src/install/claude-agents.js  terse cavecrew subagents (investigator/builder/reviewer)
@@ -161,8 +162,12 @@ scripts/bench-measure.js    aggregate the OUTPUT snapshot offline (CI-safe)
 
 Cross-platform reality: hooks (filtering/learning/guards) are **Claude Code only**.
 Other platforms get the rule + `lakonai` prefix (compliance) or the opt-in shell
-wrapper. `lakonai doctor` shows what's active. The `lakonai-shrink` MCP proxy is a
-SEPARATE package (sibling dir), not part of this package's coverage.
+wrapper. `lakonai doctor` shows what's active.
+
+MCP description shrinking is bundled: `src/shrink.js` (`lakonai shrink <upstream>`)
+is a stdio MCP proxy that compresses tool/prompt/resource descriptions offline.
+The pure logic (`shrink`/`shrinkMessage`/`transformLine`) is tested; the proxy
+loop (`runProxy`) is the istanbul-ignored I/O shell.
 
 When unsure, read the file before answering — never guess a path or symbol that
 might have moved. After any change, run the suite and keep coverage at 100%.

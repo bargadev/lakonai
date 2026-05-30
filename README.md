@@ -200,6 +200,7 @@ saved:    85%
 | `lakonai compress <file> [--llm] [--dry-run]` | Shrink a memory `.md` (offline heuristic, or `--llm` via your `claude` CLI) |
 | `lakonai doctor`                     | Per-platform health: CLI on PATH, rule installed, hooks registered    |
 | `lakonai shell-init` / `shell-uninit` | Print an opt-in shell wrapper (auto-filter read-only cmds when `LAKON_SHELL=1`) |
+| `lakonai shrink <mcp-server-cmd>`    | MCP proxy: compress tool/prompt/resource descriptions before they hit context |
 | `lakonai version` / `--version` / `-v` | Print the installed lakonai version                                 |
 
 ---
@@ -250,6 +251,24 @@ lines / trailing whitespace, never touches code or words). `--llm` rewrites the
 prose tersely using **your existing `claude` CLI** (`claude --print` — no separate
 API key, no new dependency); `--dry-run` previews the savings. The original is
 backed up to `<file>.bak`.
+
+### Shrink MCP tool descriptions
+
+If you use MCP servers, their tool/prompt/resource **descriptions** load into
+context every session. Wrap a server with `lakonai shrink` to compress those
+descriptions (offline, regex) while leaving requests and tool-call results
+untouched:
+
+```jsonc
+{
+  "mcpServers": {
+    "fs": {
+      "command": "lakonai",
+      "args": ["shrink", "npx", "@modelcontextprotocol/server-filesystem", "/path"]
+    }
+  }
+}
+```
 
 ### Read tool guard (Claude Code)
 
@@ -400,7 +419,7 @@ npm run test:coverage:check       # enforce the coverage threshold
 node bin/lakonai.js --help
 ```
 
-Suite: **294 tests**. Coverage gate: **100% lines / 100% branches / 100% functions / 100% statements**. Zero runtime dependencies. Node ≥ 18.
+Suite: **301 tests**. Coverage gate: **100% lines / 100% branches / 100% functions / 100% statements**. Zero runtime dependencies. Node ≥ 18.
 
 ---
 
