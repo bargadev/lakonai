@@ -6,6 +6,17 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [0.16.2] - 2026-06-02
+
+### Changed
+- **README output-savings section now matches what `lakonai gain` actually shows.**
+  After 0.16.1 fixed the bench, `gain` reports the rule's effect against a rule-free
+  Claude baseline (~52% on prose prompts), not the old "~10% marginal vs an
+  already-concise agent" framing. The section is rewritten honestly: the ~52% is
+  labelled a best-case on prose turns, with the real workload landing between the
+  deterministic input savings (~46%) and that ceiling. Example block refreshed to
+  the current output format.
+
 ## [0.16.1] - 2026-06-02
 
 ### Fixed
