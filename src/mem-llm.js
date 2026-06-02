@@ -20,7 +20,7 @@ const { spawnSync } = require('child_process');
 // so they cannot drive compression directly — a user on those platforms relies on
 // whichever of the CLIs below they also have installed.
 const PROVIDERS = [
-  { id: 'claude', platform: 'Claude Code', bin: 'claude', stdin: true, args: () => ['--print'], modelFlag: '--model' },
+  { id: 'claude', platform: 'Claude Code', bin: 'claude', stdin: true, args: () => ['--print'], modelFlag: '--model', systemFlag: '--append-system-prompt', cleanEnvVar: 'CLAUDE_CONFIG_DIR' },
   { id: 'gemini', platform: 'Gemini CLI', bin: 'gemini', stdin: false, args: (p) => ['-p', p], modelFlag: '-m' },
   { id: 'codex', platform: 'Codex', bin: 'codex', stdin: true, args: () => ['exec', '-'], modelFlag: '-m' },
   { id: 'cursor', platform: 'Cursor', bin: 'cursor-agent', stdin: false, args: (p) => ['-p', p], modelFlag: '--model' },
@@ -76,7 +76,10 @@ function stripWrapper(text) {
   return s;
 }
 
-function buildCompressPrompt(original) {
+function buildCompressPrompt(original, instruction) {
+  const steer = instruction
+    ? `\nADDITIONAL INSTRUCTION FROM THE USER — follow it, but the STRICT RULES above still win on any conflict:\n${instruction}\n`
+    : '';
   return `Compress this Markdown memory file to use fewer tokens while preserving 100% of its meaning and every instruction. It is an AI agent's instruction file — losing or altering a directive is unacceptable.
 
 STRICT RULES:
@@ -88,7 +91,7 @@ STRICT RULES:
 - NEVER drop, weaken, or invert a negation or a "must/never/do not" directive.
 - Compress only natural-language prose: drop articles/filler, merge redundant sentences, use shorter synonyms, prefer fragments.
 - Return ONLY the compressed Markdown body. Do NOT add an outer code fence around the whole file and do NOT add any commentary.
-
+${steer}
 FILE:
 ${original}`;
 }
@@ -110,15 +113,23 @@ ${compressed}`;
 // Run the chosen agent CLI in non-interactive mode. `run` is injectable for tests
 // (production: spawnSync). Throws a clear error when the CLI is missing or returns
 // non-zero so the caller can surface it.
-function callAgent(prompt, { run = spawnSync, provider, model = process.env.LAKONAI_MEM_MODEL } = {}) {
+function callAgent(prompt, { run = spawnSync, provider, model = process.env.LAKONAI_MEM_MODEL, systemPrompt, cleanConfigDir } = {}) {
   const p = provider || pickProvider();
-  const args = p.args(prompt);
+  // Prefer the CLI's real system-prompt flag (stronger behavioral effect); fall
+  // back to prepending it to the prompt when the CLI has no such flag.
+  const useFlag = systemPrompt && p.systemFlag;
+  const effective = systemPrompt && !useFlag ? `${systemPrompt}\n\n---\n\n${prompt}` : prompt;
+  const args = p.args(effective);
   if (model && p.modelFlag) args.push(p.modelFlag, model);
-  const res = run(p.bin, args, {
-    input: p.stdin ? prompt : undefined,
-    encoding: 'utf8',
-    maxBuffer: 8 * 1024 * 1024,
-  });
+  if (useFlag) args.push(p.systemFlag, systemPrompt);
+  // For a clean benchmark baseline: point the CLI at an empty config dir so it
+  // does NOT auto-load the installed rule (e.g. ~/.claude/CLAUDE.md). Otherwise
+  // the "no rule" arm would still have the rule, making the delta meaningless.
+  const opts = { input: p.stdin ? effective : undefined, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 };
+  if (cleanConfigDir && p.cleanEnvVar) {
+    opts.env = { ...process.env, [p.cleanEnvVar]: cleanConfigDir };
+  }
+  const res = run(p.bin, args, opts);
   if (res.error) {
     if (res.error.code === 'ENOENT') {
       throw new Error(`\`${p.bin}\` (${p.platform}) not found on PATH.`);
@@ -132,7 +143,7 @@ function callAgent(prompt, { run = spawnSync, provider, model = process.env.LAKO
 }
 
 function compressWith(original, opts = {}) {
-  return callAgent(buildCompressPrompt(original), opts);
+  return callAgent(buildCompressPrompt(original, opts.instruction), opts);
 }
 
 function fixWith(original, compressed, missing, opts = {}) {

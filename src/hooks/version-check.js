@@ -161,7 +161,7 @@ function getCachedUpdate() {
 }
 
 function formatNotice(info) {
-  return `lakonai ${info.latest} available (you have ${info.current}). Update: npm i -g lakonai@latest`;
+  return `lakonai ${info.latest} available (you have ${info.current}). Update: lakonai upgrade`;
 }
 
 module.exports = {

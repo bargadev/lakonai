@@ -51,12 +51,6 @@ test('lakon -v prints version', () => {
   assert.match(r.stdout, /lakonai/);
 });
 
-test('lakon backups shows empty state', () => {
-  const home = freshHome();
-  const r = run(['backups'], { LAKON_HOME: home });
-  assert.match(r.stdout, /no backups yet/);
-});
-
 test('lakon gain on empty log says no usage', () => {
   const home = freshHome();
   const r = run(['gain'], { LAKON_HOME: home });

@@ -6,6 +6,41 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-06-02
+
+### Added
+- **`compress-memory` takes a freeform instruction + validation levels.**
+  `lakonai compress-memory <file> "focus on marketing"` steers the rewrite. Three
+  safety levels: default (protect code+inline+URL - lossless), `--prune` (protect
+  fenced code only - may drop sentences/spans), `--rewrite` (no validation, free
+  restructure - backup only). Lets the LLM restructure/cut, not just shorten prose.
+- **Smarter shim offer.** `lakonai install` now offers the universal shim **only
+  when a hook-less agent is detected** (Codex/Cursor/Windsurf/Cline/Gemini) -
+  Claude Code's hooks already cover shell filtering, so the shim is pointless
+  there. Consensual prompt (TTY only), never silent.
+
+- **`lakonai gain` now shows OUTPUT savings too**, not just input. Measures how
+  much terser the model writes with the rule, via your local AI CLI (no API key),
+  the rule injected as a system prompt (`claude --append-system-prompt`), at most
+  weekly, TTY-only (never blocks a piped gain), cached in
+  `~/.lakon/output-bench.json` (`src/output-bench.js`). No separate command: `gain`
+  shows everything. Opt-out `LAKON_NO_OUTPUT_BENCH=1`. The figure is modest (single
+  digits) because agent CLIs are already concise; shown honestly, not inflated
+  (`docs/output-bench-vs-caveman.md`). Drops the old "offline / never measures
+  output" stance; `deps-0` still holds (the AI CLI is external).
+- **`lakonai upgrade`** updates via the detected package manager (npm/pnpm/yarn/
+  bun) + refreshes the rule block (distinct "upgraded" output). oh-my-zsh-style: at
+  a TTY, `gain`/`version` offer `Update now? [Y/n]` (`src/upgrade.js`,
+  `src/update-prompt.js`; opt-out `LAKON_NO_AUTOUPDATE=1`).
+
+### Changed
+- README rewritten lean: 442 to ~170 lines (smaller than caveman's), deep
+  reference moved to `docs/reference.md`. Removed em dashes project-wide.
+
+### Removed
+- `lakonai backups` command (low value; `revert` is what matters; the
+  `backupsReport` helper stays internal).
+
 ## [0.15.1] - 2026-05-30
 
 ### Changed
@@ -17,7 +52,7 @@ this file (no git tags). Format loosely follows
 
 ### Added
 - **Platform-agnostic auto-learning.** Beyond the Claude-transcript learner,
-  lakonai now also learns from `~/.lakon/log.jsonl` — appended to by every
+  lakonai now also learns from `~/.lakon/log.jsonl` - appended to by every
   `lakonai` call (shim wrappers + rule-prefixed commands) on ANY agent. A heavy,
   frequent non-builtin command gets promoted to the filtered set automatically,
   everywhere, throttled hourly (`learn.analyzeLog` / `maybeLearnFromLog`, called
@@ -31,7 +66,7 @@ this file (no git tags). Format loosely follows
 
 ### Notes
 - Releases now publish **only via CI** on merge to `main` (no manual `npm
-  publish`) — documented in CLAUDE.md.
+  publish`) - documented in CLAUDE.md.
 
 ## [0.14.0] - 2026-05-30
 
@@ -49,42 +84,42 @@ this file (no git tags). Format loosely follows
 ## [0.13.0] - 2026-05-30
 
 ### Added
-- **Universal PATH shim** — `lakonai shim` (and `lakonai shim --off`). Makes
+- **Universal PATH shim** - `lakonai shim` (and `lakonai shim --off`). Makes
   shell-output filtering **automatic on every agent**, not just Claude Code:
   it drops executable wrappers for `ls`/`grep`/`rg`/`ag`/`find`/`cat`/`tree`/`head`
   into `~/.lakon/shim/` and prepends that dir to PATH in your shell rc, so any
   agent (Codex, Cursor, Windsurf, Cline, Gemini CLI) that runs those commands
-  through a shell gets them routed through lakonai — no hook API, no model
+  through a shell gets them routed through lakonai - no hook API, no model
   cooperation. `git`/`tail` are excluded (editors / streaming); recursion is
   prevented by stripping the shim dir from PATH when lakonai spawns the real
   binary (`pathWithoutShim`). Opt-in (it edits your shell rc); only reaches
   agents that inherit your shell's PATH. (`src/install/shim.js`.)
 - The honest capability matrix now shows shell filtering as automatic on all six
   agents via the shim. Read/Grep guards + auto-learning remain Claude-Code-only
-  (they act on the agent's own tool calls, which needs a call-rewriting hook —
+  (they act on the agent's own tool calls, which needs a call-rewriting hook -
   today only Claude Code's; Codex is blocked upstream, see openai/codex#18491).
 
 ## [0.12.1] - 2026-05-30
 
 ### Changed
-- **README — sellable marketing pass.** Reframed the pitch as **four fronts** of
+- **README - sellable marketing pass.** Reframed the pitch as **four fronts** of
   token waste (model output · shell input · file reads · context catalogs+memory)
   and surfaced the two newest, most differentiating capabilities high up:
   automatic MCP catalog compression and `compress-memory` (no API key). No feature
   or number was invented; dropped a stale test-count/coverage claim.
-- **CLAUDE.md** — added a rule to keep the npm package page ("About") in sync:
+- **CLAUDE.md** - added a rule to keep the npm package page ("About") in sync:
   npm only re-renders the README on publish, so a user-facing README change isn't
   done until it ships in a published version.
 
 ## [0.12.0] - 2026-05-30
 
 ### Added
-- **Memory-file compression** — `lakonai compress-memory <file>` (+ `revert-memory`).
+- **Memory-file compression** - `lakonai compress-memory <file>` (+ `revert-memory`).
   Manual, opt-in compression of *user-authored* memory (`CLAUDE.md`, notes) using a
   local AI CLI you already have: `claude` / `gemini` / `codex` / `cursor-agent`,
   auto-detected on PATH (override `LAKONAI_MEM_CLI`; model via `LAKONAI_MEM_MODEL`).
   **No API key.** A `<name>.original.md` backup is written first; the output is
-  **validated** so every fenced/inline code span and URL survives byte-for-byte —
+  **validated** so every fenced/inline code span and URL survives byte-for-byte -
   on a miss it runs one fix pass, else aborts untouched. Sensitive-looking
   filenames (`.env`, `*api-key*`, …) are refused. `install` offers a one-time
   opt-in prompt to compress a detected `CLAUDE.md`. Unlike the MCP catalog shrink,
@@ -98,11 +133,11 @@ this file (no git tags). Format loosely follows
   `src/install/mcp.js`). Backed up, reversible on `uninstall`, opt-out
   `LAKON_NO_MCP=1`. Requests and tool-call results are never altered. (Caveman's
   MCP shrinker is manual config; this is automatic.)
-- **Benchmark preview in `lakonai gain`** — when there's no usage logged yet,
+- **Benchmark preview in `lakonai gain`** - when there's no usage logged yet,
   `gain` prints a reproducible, offline filter-savings benchmark so you see the
   value immediately (no separate command).
 
-### Removed (simplification — back to one command set)
+### Removed (simplification - back to one command set)
 - `lakonai mode`, `compress`, `shrink`, `shell-init`/`shell-uninit`, `inspect`,
   `reset`, `list` commands and the `UserPromptSubmit` per-turn reinforcement hook
   and the terse subagents. These were caveman-parity experiments that diluted the
@@ -114,58 +149,58 @@ this file (no git tags). Format loosely follows
 ## [0.11.0] - 2026-05-30
 
 ### Added
-- **`lakonai shrink <mcp-server-cmd>`** — a stdio MCP proxy that compresses tool/
+- **`lakonai shrink <mcp-server-cmd>`** - a stdio MCP proxy that compresses tool/
   prompt/resource `description` fields before they enter context (offline, regex;
   `src/shrink.js`). Requests and tool-call results pass through untouched; code,
   URLs, paths and identifiers preserved exactly.
 
 ### Changed
 - The MCP shrinker is now **bundled into lakonai** as a subcommand instead of a
-  separate `lakonai-shrink` package — one install, one version, reuses the terse
+  separate `lakonai-shrink` package - one install, one version, reuses the terse
   compressor. Fixed a description-compression bug (identifier over-matching +
   placeholder restore) found while folding it in.
 
 ## [0.10.0] - 2026-05-30
 
 ### Added
-- **`lakonai doctor`** — per-platform health check: CLI on PATH, rule installed,
+- **`lakonai doctor`** - per-platform health check: CLI on PATH, rule installed,
   hooks registered (`src/doctor.js`).
 - **Honest capability matrix** in the README: exactly what each of the 6 agents
   gets (hooks are Claude-Code-only; elsewhere it's the rule + `lakonai` prefix).
-- **`lakonai shell-init` / `shell-uninit`** — opt-in shell wrapper that
+- **`lakonai shell-init` / `shell-uninit`** - opt-in shell wrapper that
   auto-filters read-only commands when `LAKON_SHELL=1`, for platforms without a
   hook API (`src/shell.js`).
 - **Terse subagents** (cavecrew-style) installed on Claude Code:
   `lakonai-investigator` / `lakonai-builder` / `lakonai-reviewer`, with compact
   output contracts (`src/install/claude-agents.js`).
-- **OUTPUT benchmark harness** — `scripts/bench-output.js` measures how much less
+- **OUTPUT benchmark harness** - `scripts/bench-output.js` measures how much less
   the model writes under the rule via your own `claude` CLI (3 arms: baseline /
   concise / lakonai; honest delta = vs concise), and `scripts/bench-measure.js`
   aggregates a committed snapshot offline (CI-safe). `npm run bench` /
   `bench:output` / `bench:measure`.
 
 ### Related (separate package)
-- **`lakonai-shrink`** — a standalone, zero-dep stdio MCP proxy that compresses
+- **`lakonai-shrink`** - a standalone, zero-dep stdio MCP proxy that compresses
   tool/prompt/resource `description` fields (offline). Ships independently.
 
 ## [0.9.0] - 2026-05-29
 
 ### Added (caveman-inspired, output/memory side)
-- **Per-turn reinforcement** — a `UserPromptSubmit` hook (`src/hooks/prompt-reinforce.js`)
+- **Per-turn reinforcement** - a `UserPromptSubmit` hook (`src/hooks/prompt-reinforce.js`)
   re-injects the terse rule each turn so the model doesn't drift back to verbose
   prose mid-session. Opt out with `LAKON_NO_REINFORCE=1`.
-- **Intensity levels** — `lakonai mode <lite|full|ultra>` (`src/mode.js`,
+- **Intensity levels** - `lakonai mode <lite|full|ultra>` (`src/mode.js`,
   persisted at `~/.lakon/mode`, override with `$LAKON_MODE`). The reinforcement
   reminder reflects the active level.
 - **Formalized auto-clarity carve-outs** in the terse rule (security/irreversible
   confirmations, order-sensitive sequences, ambiguity, confusion).
-- **`lakonai compress <file>`** (`src/compress.js`) — shrink memory files
+- **`lakonai compress <file>`** (`src/compress.js`) - shrink memory files
   (CLAUDE.md/notes). Default is near-lossless and offline (blank/whitespace
   collapse, code/inline-code preserved). `--llm` rewrites prose tersely via the
   user's existing `claude` CLI (`claude --print`, no separate API key, no new
   dep); `--dry-run` previews savings without writing. Backs up to `<file>.bak`.
 - **Terse workflow commands** `/lakonai:commit` and `/lakonai:review`.
-- **Benchmark harness** (`scripts/bench.js` + `tests/fixtures/bench/`) — runs a
+- **Benchmark harness** (`scripts/bench.js` + `tests/fixtures/bench/`) - runs a
   fixed corpus through the filters and reports savings; `tests/bench.test.js`
   fails CI if a filter regresses below its threshold.
 
@@ -178,10 +213,10 @@ this file (no git tags). Format loosely follows
 
 ### Added
 - **Declarative filter engine** (`src/filters/engine.js` + `src/filters/defs.js`)
-  — a 9-stage pipeline driven by data; adding a simple command filter is now one
+  - a 9-stage pipeline driven by data; adding a simple command filter is now one
   entry in `defs.js`.
 - **Test-runner filtering** wired into the dispatch with stderr capture: jest,
-  vitest, mocha, pytest, ava, `npm/pnpm/yarn/bun test`, `go test`, `cargo test` —
+  vitest, mocha, pytest, ava, `npm/pnpm/yarn/bun test`, `go test`, `cargo test` -
   collapse passes, keep failures + the summary.
 - **Lint / build / cloud filters** via the engine: `tsc`, `eslint`, `ruff`,
   `cargo clippy`, `make`, `diff`, `docker`, `kubectl`, `aws`, package installs.
@@ -191,7 +226,7 @@ this file (no git tags). Format loosely follows
   and automatically enables a conservative, near-lossless filter for chatty
   unfiltered commands once they cross a floor. Opt out with `LAKON_NO_LEARN=1`.
 - `dedupConsecutive` and `groupByDir` primitives in `utils`.
-- `.claude/agents/lakonai-spec.md` — full-codebase knowledge agent.
+- `.claude/agents/lakonai-spec.md` - full-codebase knowledge agent.
 - npm publish GitHub Action on merge to main (version-guarded) + branch
   protection (PRs only).
 
@@ -202,7 +237,7 @@ this file (no git tags). Format loosely follows
 - Renamed the package/repo references from `lakonai-lib` to **lakonai**.
 
 ### Removed
-- The legacy `lakon` and `lak` command aliases — use `lakonai`.
+- The legacy `lakon` and `lak` command aliases - use `lakonai`.
 
 ## [0.7.x] - earlier
 
