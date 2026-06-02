@@ -156,20 +156,24 @@ async function maybeRefreshOutputBench() {
     process.stderr.write(
       `measuring output savings with ${provider.bin} (one-off, ~a minute, no API key)…\n`
     );
-    // Isolate both arms from the installed rule so the baseline is truly rule-free
-    // (otherwise the CLI auto-loads ~/.claude/CLAUDE.md and we'd compare rule vs rule).
+    // Both arms run rule-free (so the CLI's own config doesn't auto-load the
+    // installed terse rule and pollute the baseline) from an empty cwd (so no
+    // project CLAUDE.md leaks in). The terse arm differs ONLY by the rule appended
+    // as a system prompt. Auth stays on the real Keychain credential — see
+    // callAgent's ruleFree note for why we don't redirect the config dir.
     const fs = require('fs');
     const os = require('os');
     const path = require('path');
-    const cleanDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lakon-clean-'));
+    const emptyCwd = fs.mkdtempSync(path.join(os.tmpdir(), 'lakon-bench-'));
     let res;
     try {
       res = ob.measure({
-        call: (p, system) => llm.callAgent(p, { provider, systemPrompt: system, cleanConfigDir: cleanDir }),
+        call: (p, system) =>
+          llm.callAgent(p, { provider, systemPrompt: system, ruleFree: true, cwd: emptyCwd }),
       });
     } finally {
       try {
-        fs.rmSync(cleanDir, { recursive: true, force: true });
+        fs.rmSync(emptyCwd, { recursive: true, force: true });
       } catch {
         /* temp dir cleanup is best-effort */
       }

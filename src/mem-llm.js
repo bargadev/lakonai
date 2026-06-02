@@ -20,7 +20,7 @@ const { spawnSync } = require('child_process');
 // so they cannot drive compression directly — a user on those platforms relies on
 // whichever of the CLIs below they also have installed.
 const PROVIDERS = [
-  { id: 'claude', platform: 'Claude Code', bin: 'claude', stdin: true, args: () => ['--print'], modelFlag: '--model', systemFlag: '--append-system-prompt', cleanEnvVar: 'CLAUDE_CONFIG_DIR' },
+  { id: 'claude', platform: 'Claude Code', bin: 'claude', stdin: true, args: () => ['--print'], modelFlag: '--model', systemFlag: '--append-system-prompt', ruleFreeArgs: ['--setting-sources', 'project'] },
   { id: 'gemini', platform: 'Gemini CLI', bin: 'gemini', stdin: false, args: (p) => ['-p', p], modelFlag: '-m' },
   { id: 'codex', platform: 'Codex', bin: 'codex', stdin: true, args: () => ['exec', '-'], modelFlag: '-m' },
   { id: 'cursor', platform: 'Cursor', bin: 'cursor-agent', stdin: false, args: (p) => ['-p', p], modelFlag: '--model' },
@@ -113,7 +113,7 @@ ${compressed}`;
 // Run the chosen agent CLI in non-interactive mode. `run` is injectable for tests
 // (production: spawnSync). Throws a clear error when the CLI is missing or returns
 // non-zero so the caller can surface it.
-function callAgent(prompt, { run = spawnSync, provider, model = process.env.LAKONAI_MEM_MODEL, systemPrompt, cleanConfigDir } = {}) {
+function callAgent(prompt, { run = spawnSync, provider, model = process.env.LAKONAI_MEM_MODEL, systemPrompt, ruleFree, cwd } = {}) {
   const p = provider || pickProvider();
   // Prefer the CLI's real system-prompt flag (stronger behavioral effect); fall
   // back to prepending it to the prompt when the CLI has no such flag.
@@ -122,13 +122,16 @@ function callAgent(prompt, { run = spawnSync, provider, model = process.env.LAKO
   const args = p.args(effective);
   if (model && p.modelFlag) args.push(p.modelFlag, model);
   if (useFlag) args.push(p.systemFlag, systemPrompt);
-  // For a clean benchmark baseline: point the CLI at an empty config dir so it
-  // does NOT auto-load the installed rule (e.g. ~/.claude/CLAUDE.md). Otherwise
-  // the "no rule" arm would still have the rule, making the delta meaningless.
+  // For a clean benchmark baseline: stop the CLI auto-loading the installed rule
+  // (e.g. ~/.claude/CLAUDE.md) so the "no rule" arm is truly rule-free. We do this
+  // via the CLI's own flag (claude: --setting-sources project, dropping the `user`
+  // source) — NOT by redirecting the config dir, which on macOS switches the CLI to
+  // file-based auth and leaves it "Not logged in" (the credential lives in the
+  // Keychain, keyed to the default config dir). Pair it with an empty `cwd` so no
+  // project CLAUDE.md leaks in either.
+  if (ruleFree && p.ruleFreeArgs) args.push(...p.ruleFreeArgs);
   const opts = { input: p.stdin ? effective : undefined, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 };
-  if (cleanConfigDir && p.cleanEnvVar) {
-    opts.env = { ...process.env, [p.cleanEnvVar]: cleanConfigDir };
-  }
+  if (cwd) opts.cwd = cwd;
   const res = run(p.bin, args, opts);
   if (res.error) {
     if (res.error.code === 'ENOENT') {

@@ -6,6 +6,19 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [0.16.1] - 2026-06-02
+
+### Fixed
+- **Output benchmark in `lakonai gain` now actually measures (was stuck on "not
+  measured yet").** The bench isolated the baseline arm from the installed terse
+  rule by pointing `CLAUDE_CONFIG_DIR` at an empty dir — but on macOS that switches
+  the Claude CLI to file-based auth, leaving it "Not logged in" (the credential
+  lives in the Keychain, keyed to the default config dir). The CLI exited 1, the
+  error was swallowed, and the figure never appeared. We now isolate the rule via
+  the CLI's own flag instead (`--setting-sources project`, dropping the `user`
+  source) plus an empty `cwd`, keeping Keychain auth intact. `callAgent` gains
+  `ruleFree`/`cwd` options; the `cleanConfigDir`/`cleanEnvVar` path is removed.
+
 ## [0.16.0] - 2026-06-02
 
 ### Added
