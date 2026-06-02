@@ -114,6 +114,20 @@ test('callAgent throws on non-zero exit', () => {
   assert.throws(() => llm.callAgent('p', { run, provider: claude }), /claude exited 2: bad/);
 });
 
+test('callAgent appends ruleFreeArgs and sets cwd when ruleFree is set', () => {
+  const run = fakeRun('x');
+  llm.callAgent('p', { run, provider: claude, ruleFree: true, cwd: '/tmp/empty' });
+  assert.deepEqual(run.lastCall.args, ['--print', '--setting-sources', 'project']);
+  assert.equal(run.lastCall.opts.cwd, '/tmp/empty');
+});
+
+test('callAgent omits ruleFreeArgs for providers without them, and cwd when unset', () => {
+  const run = fakeRun('x');
+  llm.callAgent('p', { run, provider: gemini, ruleFree: true });
+  assert.deepEqual(run.lastCall.args, ['-p', 'p']); // gemini has no ruleFreeArgs
+  assert.equal(run.lastCall.opts.cwd, undefined);
+});
+
 // --- compressWith / fixWith ----------------------------------------------
 
 test('compressWith sends the compress prompt and strips the result', () => {

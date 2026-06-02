@@ -184,9 +184,17 @@ much terser the model writes with the rule. There is NO separate `bench` command
 key). `measure()` runs each prompt twice — baseline vs the rule injected as a
 **system prompt** (`provider.systemFlag` → `claude --append-system-prompt`; prepend
 fallback otherwise) — and compares output tokens. Cached in `~/.lakon/output-bench.json`;
-`summaryLine()` renders it. Opt-out `LAKON_NO_OUTPUT_BENCH=1`. The number is modest
-(~single digits) because agent CLIs are already concise — shown honestly, not
-inflated (see `docs/output-bench-vs-caveman.md`). This dropped the old "offline /
+`summaryLine()` renders it. Opt-out `LAKON_NO_OUTPUT_BENCH=1`.
+
+**Baseline isolation (`callAgent({ ruleFree, cwd })`):** both arms must run rule-FREE
+so the baseline isn't polluted by the CLI auto-loading the installed terse rule (e.g.
+`~/.claude/CLAUDE.md`) — otherwise the delta collapses or goes negative. We isolate via
+the CLI's own flag (`provider.ruleFreeArgs` → claude: `--setting-sources project`, which
+drops the `user` source) plus an empty `cwd` (no project CLAUDE.md leaks). We do NOT
+redirect the config dir: on macOS that switches claude to file-based auth and it ends up
+"Not logged in" (credential lives in the Keychain, keyed to the default config dir), so
+the whole bench silently failed. The number is modest because agent CLIs are already
+concise — shown honestly, not inflated (see `docs/output-bench-vs-caveman.md`). This dropped the old "offline /
 never measures output" stance from lakonai's identity; `deps-0` still holds (the AI
 CLI is external, not an npm dep).
 
