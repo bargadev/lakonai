@@ -109,12 +109,6 @@ test('main: gain / stats', async () => {
   assert.ok(out().length > 0);
 });
 
-test('main: backups', async () => {
-  process.argv = ['node', 'lakonai', 'backups'];
-  await withCapture(() => cli.main());
-  assert.match(out(), /backup history/);
-});
-
 test('main: doctor renders a per-platform report', async () => {
   process.argv = ['node', 'lakonai', 'doctor'];
   await withCapture(() => cli.main());

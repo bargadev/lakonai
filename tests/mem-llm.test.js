@@ -128,3 +128,11 @@ test('fixWith sends the fix prompt', () => {
   // gemini is non-stdin → prompt is the last arg
   assert.match(run.lastCall.args[1], /- `x`/);
 });
+
+test('buildCompressPrompt injects a freeform instruction when given', () => {
+  const p = llm.buildCompressPrompt('# Hi\nbody', 'focus on marketing');
+  assert.match(p, /ADDITIONAL INSTRUCTION/);
+  assert.match(p, /focus on marketing/);
+  // none when absent
+  assert.doesNotMatch(llm.buildCompressPrompt('# Hi'), /ADDITIONAL INSTRUCTION/);
+});

@@ -169,3 +169,41 @@ test('pickMemoryTarget returns null when nothing is present', () => {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'lakhome-'));
   assert.equal(pickMemoryTarget(cwd, home), null);
 });
+
+// --- prune / rewrite validation modes -------------------------------------
+
+test('validate prune mode protects only fenced code blocks', () => {
+  const orig = 'see `x.ts` at https://a.io/z\n```js\ncode()\n```';
+  // dropped the inline span + URL, kept the code block
+  const dropped = 'gone\n```js\ncode()\n```';
+  assert.equal(mem.validate(orig, dropped).ok, false); // strict: inline/URL lost
+  assert.equal(mem.validate(orig, dropped, { prune: true }).ok, true); // prune: code survives
+});
+
+test('validate prune still flags a dropped code block', () => {
+  const orig = '```js\ncode()\n```\ntext';
+  assert.equal(mem.validate(orig, 'text', { prune: true }).ok, false);
+});
+
+test('compressFile rewrite mode skips validation entirely', () => {
+  const p = tmpFile('CLAUDE.md', 'keep `a.ts` and a section');
+  // a lossy engine that drops the protected span — would normally abort
+  const res = mem.compressFile(p, {
+    compress: () => 'totally rewritten, span gone',
+    rewrite: true,
+    tokenize: (s) => s.length,
+  });
+  assert.equal(fs.readFileSync(p, 'utf8'), 'totally rewritten, span gone');
+  assert.ok(fs.existsSync(res.backup));
+});
+
+test('compressFile prune mode allows dropping inline spans but keeps code', () => {
+  const p = tmpFile('CLAUDE.md', 'intro `tok`\n```\ncode\n```');
+  const res = mem.compressFile(p, {
+    compress: () => 'intro\n```\ncode\n```', // dropped `tok`, kept code
+    prune: true,
+    tokenize: (s) => s.length,
+  });
+  assert.match(fs.readFileSync(p, 'utf8'), /```\ncode\n```/);
+  assert.ok(res);
+});

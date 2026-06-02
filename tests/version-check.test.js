@@ -140,7 +140,7 @@ test('formatNotice builds expected message', () => {
   const msg = vc.formatNotice({ current: '0.5.0', latest: '0.6.0', available: true });
   assert.ok(msg.includes('0.6.0'));
   assert.ok(msg.includes('0.5.0'));
-  assert.ok(msg.includes('npm i -g'));
+  assert.ok(msg.includes('lakonai upgrade'));
 });
 
 test('fetchLatest returns null when response body is invalid JSON', async () => {

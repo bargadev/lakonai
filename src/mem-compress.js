@@ -17,25 +17,30 @@ const path = require('path');
 const INLINE = /`[^`\n]+`/g;
 const URL = /\bhttps?:\/\/\S+/g;
 
-// Every protected span must survive verbatim, else the rewrite is unsafe.
-function protectedSpans(text) {
-  return [
+// Every protected span must survive verbatim, else the rewrite is unsafe. In
+// `prune` mode (the user explicitly wants to drop/restructure sections) only
+// fenced CODE blocks are protected — inline spans and URLs may be cut along with
+// the prose around them.
+function protectedSpans(text, { prune = false } = {}) {
+  const spans = [
     ...(text.match(/```[\s\S]*?```/g) || []),
     ...(text.match(/~~~[\s\S]*?~~~/g) || []),
-    ...(text.match(INLINE) || []),
-    ...(text.match(URL) || []),
   ];
+  if (!prune) {
+    spans.push(...(text.match(INLINE) || []), ...(text.match(URL) || []));
+  }
+  return spans;
 }
 
-function validate(original, compressed) {
+function validate(original, compressed, { prune = false } = {}) {
   const missing = [];
   const counts = (arr) => {
     const m = new Map();
     for (const s of arr) m.set(s, (m.get(s) || 0) + 1);
     return m;
   };
-  const before = counts(protectedSpans(original));
-  const after = counts(protectedSpans(compressed));
+  const before = counts(protectedSpans(original, { prune }));
+  const after = counts(protectedSpans(compressed, { prune }));
   for (const [span, n] of before) {
     if ((after.get(span) || 0) < n) missing.push(span);
   }
@@ -68,7 +73,7 @@ function isSensitivePath(filePath) {
 // sensitive (remote only), or fails validation even after an optional fix pass.
 // `compress` is the engine (offline regex by default; pass the LLM engine for
 // model-based compression). `fix` optionally repairs a validation miss.
-function compressFile(filePath, { tokenize, compress, fix = null, remote = false } = {}) {
+function compressFile(filePath, { tokenize, compress, fix = null, remote = false, prune = false, rewrite = false } = {}) {
   if (typeof compress !== 'function') {
     throw new Error('compressFile requires a compress engine (see src/mem-llm.js)');
   }
@@ -91,16 +96,21 @@ function compressFile(filePath, { tokenize, compress, fix = null, remote = false
   const original = fs.readFileSync(filePath, 'utf8');
   let compressed = compress(original);
 
-  let result = validate(original, compressed);
-  if (!result.ok && typeof fix === 'function') {
-    compressed = fix(original, compressed, result.missing);
-    result = validate(original, compressed);
-  }
-  if (!result.ok) {
-    throw new Error(
-      `validation failed — these protected spans were lost, original left untouched:\n  ` +
-        result.missing.slice(0, 5).join('\n  ')
-    );
+  // `rewrite` mode trusts the model to restructure/cut freely (e.g. turning a
+  // verbose README into a lean one) — no span validation, only the backup keeps
+  // it safe. Default and `prune` still validate.
+  if (!rewrite) {
+    let result = validate(original, compressed, { prune });
+    if (!result.ok && typeof fix === 'function') {
+      compressed = fix(original, compressed, result.missing);
+      result = validate(original, compressed, { prune });
+    }
+    if (!result.ok) {
+      throw new Error(
+        `validation failed — these protected spans were lost, original left untouched:\n  ` +
+          result.missing.slice(0, 5).join('\n  ')
+      );
+    }
   }
 
   fs.writeFileSync(backup, original);

@@ -175,6 +175,21 @@ Runs `tests/fixtures/bench/*` through the filters and prints savings.
 `tests/bench.test.js` asserts each case clears its `minSaved` threshold — a filter
 regression fails CI.
 
+## Output benchmark (`src/output-bench.js`)
+
+`lakonai gain` shows BOTH input savings (deterministic) AND an OUTPUT figure — how
+much terser the model writes with the rule. There is NO separate `bench` command:
+`gain` measures it inline, at most weekly (`isStale`, 7-day TTL) and only at a TTY
+(never blocks a piped gain), via the user's local AI CLI (mem-llm.callAgent, no API
+key). `measure()` runs each prompt twice — baseline vs the rule injected as a
+**system prompt** (`provider.systemFlag` → `claude --append-system-prompt`; prepend
+fallback otherwise) — and compares output tokens. Cached in `~/.lakon/output-bench.json`;
+`summaryLine()` renders it. Opt-out `LAKON_NO_OUTPUT_BENCH=1`. The number is modest
+(~single digits) because agent CLIs are already concise — shown honestly, not
+inflated (see `docs/output-bench-vs-caveman.md`). This dropped the old "offline /
+never measures output" stance from lakonai's identity; `deps-0` still holds (the AI
+CLI is external, not an npm dep).
+
 ## Testing & coverage policy (non-negotiable)
 
 - **Jest**, tests in `tests/**/*.test.js`, assertions via `node:assert/strict`,
@@ -204,10 +219,14 @@ src/install/*.js            installer (hooks as launchers, /lakonai:gain, MCP au
 src/install/mcp.js          auto-wrap MCP servers in ~/.claude.json (reversible)
 ```
 
-Visible user commands: `install`, `uninstall`, `revert`, `backups`, `gain`,
-`doctor`, `version`. Everything else is automatic after install. Cross-platform
+Visible user commands: `install`, `upgrade`, `uninstall`, `revert`, `shim`,
+`compress-memory`/`revert-memory`, `gain`, `doctor`, `version`. (`backups` was
+removed; `compress-memory` takes a freeform instruction + `--prune`/`--rewrite`
+validation levels; `upgrade` self-updates via the detected package manager + an
+oh-my-zsh-style `[Y/n]` prompt; `install` offers the shim only when a hook-less
+agent is detected.) Everything else is automatic after install. Cross-platform
 reality: hooks (filtering/learning/guards) are **Claude Code only**; other
-platforms get the rule + `lakonai` prefix (compliance). `lakonai doctor` shows
+platforms get the rule + `lakonai` prefix (compliance), or the shim. `lakonai doctor` shows
 what's active.
 
 When unsure, read the file before answering — never guess a path or symbol that

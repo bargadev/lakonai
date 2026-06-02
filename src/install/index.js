@@ -37,7 +37,7 @@ function detectPlatforms() {
   return platforms.list().filter((p) => p.detect(home));
 }
 
-async function install({ only, here = false } = {}) {
+async function install({ only, here = false, upgraded = false } = {}) {
   const rule = readRule();
   const home = homedir();
   const all = platforms.list();
@@ -56,19 +56,26 @@ async function install({ only, here = false } = {}) {
     if (only) {
       process.stdout.write(`${FAIL} unknown platform "${only}". Run \`lakonai list\` to see options.\n`);
     } else {
-      process.stdout.write(`${FAIL} no supported global platforms detected. Install Claude Code, Codex, or Gemini CLI first — or run \`lakonai install --here\` to write per-project rules (Cursor/Windsurf/Cline) in the current directory.\n`);
+      process.stdout.write(`${FAIL} no supported global platforms detected. Install Claude Code, Codex, or Gemini CLI first - or run \`lakonai install --here\` to write per-project rules (Cursor/Windsurf/Cline) in the current directory.\n`);
     }
     process.exitCode = 1;
     return;
   }
 
-  process.stdout.write('\nlakonai install\n');
-  process.stdout.write('───────────────\n');
+  const version = require('../../package.json').version;
+  if (upgraded) {
+    process.stdout.write(`\nlakonai upgraded to ${version}\n`);
+    process.stdout.write('─'.repeat(`lakonai upgraded to ${version}`.length) + '\n');
+  } else {
+    process.stdout.write('\nlakonai install\n');
+    process.stdout.write('───────────────\n');
+  }
 
+  const verb = upgraded ? 'refreshed' : ARROW;
   for (const p of targets) {
     try {
       const result = p.install({ home, rule, id: p.id });
-      process.stdout.write(`${OK} ${padLabel(p.label)} ${ARROW} ${shortenPath(result)}\n`);
+      process.stdout.write(`${OK} ${padLabel(p.label)} ${verb} ${shortenPath(result)}\n`);
     } catch (err) {
       process.stdout.write(`${FAIL} ${padLabel(p.label)} ${ARROW} ${err.message}\n`);
       process.exitCode = 1;
@@ -76,6 +83,13 @@ async function install({ only, here = false } = {}) {
   }
 
   process.stdout.write('\n');
+  // Upgrade is a refresh, not a first install - keep the output short, skip the
+  // getting-started tips a fresh install shows.
+  if (upgraded) {
+    process.stdout.write(`  ${BULLET} Rule block + hooks refreshed. See changes: \`lakonai version\`.\n`);
+    process.stdout.write('\nRestart your AI agent (or open a new session) to pick up the new rule.\n');
+    return;
+  }
   if (!only && !here) {
     process.stdout.write(`  ${BULLET} Per-project rules (Cursor/Windsurf/Cline) were skipped.\n`);
     process.stdout.write(`    Inside a repo? Run \`lakonai install --here\` to add them in the current directory.\n`);
@@ -83,13 +97,41 @@ async function install({ only, here = false } = {}) {
   process.stdout.write(`  ${BULLET} \`lakonai uninstall\` removes only the lakonai block (keeps your other content).\n`);
   process.stdout.write(`  ${BULLET} \`lakonai revert\`    restores files to pre-install state from backup.\n`);
   process.stdout.write(`  ${BULLET} \`lakonai gain\`      shows how many tokens you've saved.\n`);
-  process.stdout.write(
-    `  ${BULLET} \`lakonai shim\`     makes ls/grep/find/… filtering AUTOMATIC on EVERY agent\n` +
-      `    (Codex/Cursor/Windsurf/Cline/Gemini — not just Claude Code). Prepends ~/.lakon/shim to PATH.\n`
-  );
   process.stdout.write('\nRestart your AI agent (or open a new session) for the rule to take effect.\n');
 
+  await maybeOfferShim({ targets });
   await maybeOfferCompress({ cwd: process.cwd(), home });
+}
+
+// Offer the universal shim ONLY when a hook-less agent was installed — Claude Code
+// gets automatic shell filtering from its hooks, so the shim is pointless there.
+// Editing the shell rc + shadowing system commands is invasive, so we ask (never
+// silent, TTY only).
+/* istanbul ignore next -- interactive prompt; gated on TTY */
+async function maybeOfferShim({ targets }) {
+  if (!process.stdin.isTTY) return;
+  const hookless = targets.filter((p) => p.id !== 'claude-code');
+  if (!hookless.length) return; // Claude Code only — hooks already cover it
+  const names = hookless.map((p) => p.label.trim()).join(', ');
+  process.stdout.write(
+    `\n  ${BULLET} ${names} have no hook API, so shell filtering there isn't automatic yet.\n` +
+      `    The universal shim fixes that (routes ls/grep/find/… through lakonai via PATH).\n` +
+      `    It edits your shell rc (~/.zshrc, ~/.bashrc) and shadows those commands.\n`
+  );
+  const yes = await promptYesNo('    Enable the universal shim now? [y/N] ');
+  if (!yes) {
+    process.stdout.write('    Skipped. Run `lakonai shim` anytime (or `lakonai shim --off`).\n');
+    return;
+  }
+  try {
+    const shim = require('./shim');
+    const { dir, touched } = shim.install();
+    process.stdout.write(`    ${OK} Shim enabled (${shortenPath(dir)}).`);
+    if (touched.length) process.stdout.write(` PATH set in ${touched.map(shortenPath).join(', ')}.`);
+    process.stdout.write('\n    Restart your shell for it to take effect.\n');
+  } catch (err) {
+    process.stdout.write(`    ${FAIL} ${err.message}\n`);
+  }
 }
 
 // First existing memory file worth compressing: project CLAUDE.md, then the
@@ -202,7 +244,7 @@ async function revert({ only } = {}) {
 }
 
 function backupsReport() {
-  const lines = ['', 'lakonai — backup history', '────────────────────────'];
+  const lines = ['', 'lakonai - backup history', '────────────────────────'];
   let any = false;
   for (const p of platforms.list()) {
     const entries = listBackups(p.id);
