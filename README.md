@@ -77,43 +77,47 @@ Two extras worth knowing:
 
 ---
 
-## Output savings: improvements on top of improvements
+## Output savings: the rule trims the model's prose too
 
-How much does the rule cut the model's output? We measured the **same rule, same
-prompt** against two baselines:
+The input side (filtered shell output, blocked reads, compressed catalogs) is
+deterministic. But the terse rule also makes the **model itself** write less.
+`lakonai gain` measures it by running the same prompts through your local AI CLI
+twice - once rule-free, once with the terse rule as a system prompt - and
+comparing output tokens.
 
-| The model lakonai is layered on…            | …and the rule cuts |                                                |
-| ------------------------------------------- | :----------------: | ---------------------------------------------- |
-| a **raw, verbose** model (Gemini default)   |      **~70%**      | as strong as any terse-prompt tool             |
-| **Claude Code** - already concise by design |   **~10% more**    | the hard case: trimming what's already trimmed |
+On a rule-free Claude baseline, explain / how-do-I / write-a-function prompts run
+**~52% leaner** with the rule (1332 → 634 tokens across 4 prompts).
 
-_361 → 107 tokens on the verbose baseline; 240 → 216 on Claude Code. Same rule -
-the only variable is how much fat the model started with._
+Read that as a **best case on prose turns**, not your day-to-day average:
 
-Anyone can cut the obvious fat (~70% off a rambling API). lakonai's edge is the
-**hard** case: point it at an agent that's _already_ optimized for brevity and it
-**still finds another ~10%** - stacked on top of filtered shell output, blocked
-reads, and compressed catalogs. **Improvements on top of improvements.**
+- it's a small, fixed corpus of chatty prompts - exactly where preamble balloons;
+- model output varies run to run (the figure is a single weekly sample, not an average);
+- agentic turns (code edits, tool calls, diffs) are mostly code, not prose, so the
+  rule trims far less there.
 
-> `lakonai gain` shows the honest **~10% marginal** number - what you actually save
-> on _your_ already-concise agent, not an inflated raw-baseline headline.
+Your real workload lands somewhere between the deterministic **input** savings
+(~46%) and this prose ceiling, pulled down by however much of your work is
+code and tooling rather than explanation.
+
+> `lakonai gain` shows both: the measured, deterministic input number and the
+> estimated output number - labelled as an estimate, never inflated into a headline.
 
 ---
 
 ## See your savings
 
 ```
-lakonai - saved 161.8k tok (67% smaller) across 2104 commands
+lakonai - saved 196.8k tok (46% smaller) across 1910 commands
 
-  today      6.7k tok saved  (68%)
-  this week  36.4k tok saved  (67%)
+  today      984 tok saved  (17%)
+  this week  124.5k tok saved  (57%)
 
-  top: git 124.3k · ls 18.2k · grep 12.0k
+  top: grep 55.3k · tail 55.1k · Read 34.3k · git 23.4k · cat 15.2k
 
-  output (terse rule): ~10% fewer tokens vs your agent's baseline
+  output (terse rule): ~52% fewer tokens (1332 → 634, 4 prompts) [claude]
 ```
 
-Input is measured & deterministic; output is measured by your local AI CLI (no key,
+Input is measured & deterministic; output is estimated by your local AI CLI (no key,
 weekly, at a TTY only). Both sides, one number.
 
 ---
