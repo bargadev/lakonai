@@ -19,9 +19,9 @@ test('detectManager defaults to npm', () => {
 });
 
 test('upgradeArgs maps each manager to its global-install command', () => {
-  assert.deepEqual(upgradeArgs('npm'), ['npm', ['install', '-g', 'lakonai@latest']]);
+  assert.deepEqual(upgradeArgs('npm'), ['npm', ['install', '-g', 'lakonai@latest', '--prefer-online']]);
   assert.deepEqual(upgradeArgs('pnpm'), ['pnpm', ['add', '-g', 'lakonai@latest']]);
   assert.deepEqual(upgradeArgs('yarn'), ['yarn', ['global', 'add', 'lakonai@latest']]);
   assert.deepEqual(upgradeArgs('bun'), ['bun', ['add', '-g', 'lakonai@latest']]);
-  assert.deepEqual(upgradeArgs('whatever'), ['npm', ['install', '-g', 'lakonai@latest']]);
+  assert.deepEqual(upgradeArgs('whatever'), ['npm', ['install', '-g', 'lakonai@latest', '--prefer-online']]);
 });

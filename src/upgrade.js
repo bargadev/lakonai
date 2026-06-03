@@ -27,7 +27,11 @@ function upgradeArgs(pm) {
     case 'bun':
       return ['bun', ['add', '-g', 'lakonai@latest']];
     default:
-      return ['npm', ['install', '-g', 'lakonai@latest']];
+      // `--prefer-online` forces npm to revalidate cached registry metadata
+      // before resolving `latest`. Without it, a stale packument can pin the
+      // upgrade to an old version — npm served `latest → 0.16.2` from cache even
+      // after 0.16.3 shipped, so `upgrade` silently reinstalled the old build.
+      return ['npm', ['install', '-g', 'lakonai@latest', '--prefer-online']];
   }
 }
 

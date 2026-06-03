@@ -6,6 +6,17 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [0.16.4] - 2026-06-02
+
+### Fixed
+- **`lakonai upgrade` no longer reinstalls the old version from a stale npm cache.**
+  The npm path now passes `--prefer-online`, forcing npm to revalidate cached
+  registry metadata before resolving `lakonai@latest`. Without it, a cached
+  packument could keep `latest` pinned to a previous version (npm served `latest →
+  0.16.2` even after 0.16.3 shipped), so `upgrade` silently no-op'd. No full
+  `npm cache clean` — that wipes every package's cache and is discouraged;
+  `--prefer-online` is the surgical fix.
+
 ## [0.16.3] - 2026-06-02
 
 ### Changed
