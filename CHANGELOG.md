@@ -6,6 +6,13 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [0.16.3] - 2026-06-02
+
+### Changed
+- **`homepage` now points to the marketing site** (`https://bargadev.github.io/lakonai-site`)
+  instead of the GitHub repo, so the npm page links to the landing page. The
+  repository and bug-tracker links still point to GitHub.
+
 ## [0.16.2] - 2026-06-02
 
 ### Changed

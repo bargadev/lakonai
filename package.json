@@ -1,6 +1,6 @@
 {
   "name": "lakonai",
-  "version": "0.16.2",
+  "version": "0.16.3",
   "description": "lakonai — save AI context tokens. Filters & compresses CLI output (git, ls, grep, find, test runners, lint/build, docker/kubectl/aws) before it reaches Claude Code, Codex, Cursor, Windsurf, Cline or Gemini — and learns to filter new commands automatically the more you use it.",
   "keywords": [
     "claude",
@@ -24,7 +24,7 @@
   ],
   "license": "MIT",
   "author": "bargadev",
-  "homepage": "https://github.com/bargadev/lakonai",
+  "homepage": "https://bargadev.github.io/lakonai-site",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/bargadev/lakonai.git"
