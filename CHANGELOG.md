@@ -6,6 +6,18 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [0.16.5] - 2026-06-09
+
+### Fixed
+- **`lakonai gain` no longer hangs forever on the output benchmark.** The
+  benchmark fires several `claude --print` calls back-to-back, but `callAgent`
+  ran `spawnSync` with no timeout — a single stalled CLI (auth prompt, network
+  stall) blocked `gain` (and memory compression) indefinitely. Calls now carry a
+  default 120s wall-clock cap (`SIGKILL` on expiry), so a hung agent aborts the
+  bench instead of freezing the command. Override with `LAKONAI_LLM_TIMEOUT_MS`
+  (set `0` to disable). On timeout the bench is skipped silently and `gain`
+  finishes normally.
+
 ## [0.16.4] - 2026-06-02
 
 ### Fixed

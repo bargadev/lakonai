@@ -11,6 +11,17 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
+// Hard wall-clock cap per CLI call so a hung agent (auth prompt, network stall)
+// can never block the caller forever — `lakonai gain` fires 8 of these in a row.
+// Override with LAKONAI_LLM_TIMEOUT_MS; 0/invalid disables the cap.
+const DEFAULT_TIMEOUT_MS = 120000;
+function defaultTimeout(env = process.env) {
+  const raw = env.LAKONAI_LLM_TIMEOUT_MS;
+  if (raw == null || raw === '') return DEFAULT_TIMEOUT_MS;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? n : DEFAULT_TIMEOUT_MS;
+}
+
 // Local agent CLIs that can run a one-shot, non-interactive prompt. Order is the
 // detection preference. `args(prompt)` builds argv; when `stdin` is true the
 // prompt is piped instead of passed as an argument. `modelFlag` (+ env
@@ -113,7 +124,7 @@ ${compressed}`;
 // Run the chosen agent CLI in non-interactive mode. `run` is injectable for tests
 // (production: spawnSync). Throws a clear error when the CLI is missing or returns
 // non-zero so the caller can surface it.
-function callAgent(prompt, { run = spawnSync, provider, model = process.env.LAKONAI_MEM_MODEL, systemPrompt, ruleFree, cwd } = {}) {
+function callAgent(prompt, { run = spawnSync, provider, model = process.env.LAKONAI_MEM_MODEL, systemPrompt, ruleFree, cwd, timeout = defaultTimeout() } = {}) {
   const p = provider || pickProvider();
   // Prefer the CLI's real system-prompt flag (stronger behavioral effect); fall
   // back to prepending it to the prompt when the CLI has no such flag.
@@ -132,10 +143,17 @@ function callAgent(prompt, { run = spawnSync, provider, model = process.env.LAKO
   if (ruleFree && p.ruleFreeArgs) args.push(...p.ruleFreeArgs);
   const opts = { input: p.stdin ? effective : undefined, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 };
   if (cwd) opts.cwd = cwd;
+  if (timeout > 0) {
+    opts.timeout = timeout;
+    opts.killSignal = 'SIGKILL';
+  }
   const res = run(p.bin, args, opts);
   if (res.error) {
     if (res.error.code === 'ENOENT') {
       throw new Error(`\`${p.bin}\` (${p.platform}) not found on PATH.`);
+    }
+    if (res.error.code === 'ETIMEDOUT') {
+      throw new Error(`${p.bin} timed out after ${timeout}ms (set LAKONAI_LLM_TIMEOUT_MS to adjust).`);
     }
     throw new Error(`${p.bin} failed: ${res.error.message}`);
   }
