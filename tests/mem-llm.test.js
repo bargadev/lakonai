@@ -114,6 +114,46 @@ test('callAgent throws on non-zero exit', () => {
   assert.throws(() => llm.callAgent('p', { run, provider: claude }), /claude exited 2: bad/);
 });
 
+test('callAgent sets a default spawn timeout (hung CLI cannot block forever)', () => {
+  const run = fakeRun('x');
+  llm.callAgent('p', { run, provider: claude });
+  assert.equal(run.lastCall.opts.timeout, 120000);
+  assert.equal(run.lastCall.opts.killSignal, 'SIGKILL');
+});
+
+test('callAgent reads LAKONAI_LLM_TIMEOUT_MS, falling back to default on invalid', () => {
+  const run = fakeRun('x');
+  const prev = process.env.LAKONAI_LLM_TIMEOUT_MS;
+  try {
+    process.env.LAKONAI_LLM_TIMEOUT_MS = '9000';
+    llm.callAgent('p', { run, provider: claude });
+    assert.equal(run.lastCall.opts.timeout, 9000);
+    process.env.LAKONAI_LLM_TIMEOUT_MS = 'nonsense';
+    llm.callAgent('p', { run, provider: claude });
+    assert.equal(run.lastCall.opts.timeout, 120000);
+    process.env.LAKONAI_LLM_TIMEOUT_MS = '0';
+    llm.callAgent('p', { run, provider: claude });
+    assert.equal(run.lastCall.opts.timeout, undefined);
+  } finally {
+    if (prev === undefined) delete process.env.LAKONAI_LLM_TIMEOUT_MS;
+    else process.env.LAKONAI_LLM_TIMEOUT_MS = prev;
+  }
+});
+
+test('callAgent honors an explicit timeout and disables it at 0', () => {
+  const run = fakeRun('x');
+  llm.callAgent('p', { run, provider: claude, timeout: 5000 });
+  assert.equal(run.lastCall.opts.timeout, 5000);
+  llm.callAgent('p', { run, provider: claude, timeout: 0 });
+  assert.equal(run.lastCall.opts.timeout, undefined);
+  assert.equal(run.lastCall.opts.killSignal, undefined);
+});
+
+test('callAgent surfaces a clear error when the CLI times out', () => {
+  const run = fakeRun('', { error: Object.assign(new Error('spawnSync claude ETIMEDOUT'), { code: 'ETIMEDOUT' }) });
+  assert.throws(() => llm.callAgent('p', { run, provider: claude, timeout: 1234 }), /claude timed out after 1234ms/);
+});
+
 test('callAgent appends ruleFreeArgs and sets cwd when ruleFree is set', () => {
   const run = fakeRun('x');
   llm.callAgent('p', { run, provider: claude, ruleFree: true, cwd: '/tmp/empty' });
