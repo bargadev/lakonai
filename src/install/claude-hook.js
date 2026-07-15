@@ -25,6 +25,16 @@ const HOOKS = [
     matcher: 'Grep',
   },
   {
+    // The universal net: PostToolUse is the only event that can replace a tool
+    // result, so this is the one place Read/Grep/WebFetch/unrouted-Bash output
+    // can be parked. The PreToolUse hooks above cannot — they run before the
+    // output exists.
+    basename: 'lakon-output-spill.js',
+    src: path.join(__dirname, '..', 'hooks', 'output-spill.js'),
+    event: 'PostToolUse',
+    matcher: 'Bash|Read|Grep|Glob|WebFetch|Task',
+  },
+  {
     basename: 'lakon-stop-hook.js',
     src: path.join(__dirname, '..', 'hooks', 'stop-hook.js'),
     event: 'Stop',

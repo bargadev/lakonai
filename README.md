@@ -42,18 +42,48 @@ Conservative - peaks go higher. `lakonai gain` shows your own.
 
 ---
 
-## What it does - four fronts
+## What it does - five fronts
 
 | Front                       | Wasted tokens look like…                            | lakonai fixes it by…                                                                |
 | --------------------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | **Output** (the model)      | _"Great question! Let me explain…"_                 | A terse-response rule - no preamble, no recap.                                      |
 | **Input** (your shell)      | `git log` dumping 1.8k tokens of metadata           | Filtering **30 commands** (git/ls/grep/tests/lint/docker…) before they hit context. |
 | **Reads** (files)           | `Read pnpm-lock.yaml` → 80k of nothing              | A hook that blocks lockfiles/`node_modules`, caps huge files, and caps `Grep`.      |
+| **Overflow** (what's left)  | A 4k-line build log that no filter knows            | Parking it on disk and handing the agent a digest - `lakonai peek` reads it back.   |
 | **Context** (every session) | MCP catalogs + your `CLAUDE.md`, re-paid every turn | Auto-compressing MCP catalogs; opt-in `compress-memory`.                            |
 
-Most tools stop at one front. lakonai works all four - and **gets better the more
+Most tools stop at one front. lakonai works all five - and **gets better the more
 you use it**: it auto-learns new heavy commands and turns on a safe filter for them,
 no config. ([full reference →](docs/reference.md))
+
+**Overflow, concretely.** Filters handle commands lakonai knows. When output is
+still over budget after filtering, the full text goes to `~/.lakon/sandbox/` and
+the agent sees a digest instead - head, tail, exit code, and how to query the rest:
+
+```
+lakonai: 4000 lines / 249KB parked in sandbox 30930a0c — too big for context, kept out.
+$ node build.js  → exit 0
+
+[build] compiling module 0 …
+… 3980 lines elided …
+[build] compiling module 3999 …
+
+Full output is on disk, not lost. Query it without paying for the whole thing:
+  lakonai peek 30930a0c --grep "error"
+```
+
+Measured on that example: **4000 lines / 120KB in, 29 lines out.** Nothing is
+lost - it stops being re-paid on every turn. Set `LAKON_SPILL_TOKENS=0` to turn
+it off.
+
+This works on **any** tool that produces bulk output - not just the commands
+lakonai knows. A `PostToolUse` hook sees the real result after the tool ran, so
+`terraform plan`, `./deploy.sh`, a 3k-line `Grep`, a `WebFetch` of a huge page and
+stderr are all covered, alongside `Read`. Structural results (`Edit`, `Write`,
+`TodoWrite`) are left alone.
+
+Filters still run first and handle the commands lakonai knows - `git log` becomes
+three lines without ever touching the disk. The spill is the net for what's left.
 
 ---
 
@@ -131,6 +161,7 @@ weekly, at a TTY only). Both sides, one number.
 | `lakonai uninstall` / `revert`                            | Strip the lakonai block / restore from backup                  |
 | `lakonai shim [--off]`                                    | Universal PATH shim - automatic shell filtering on every agent |
 | `lakonai compress-memory <file>` / `revert-memory <file>` | Shrink a memory file via your local AI CLI / undo              |
+| `lakonai peek [id]`                                       | Read output parked in the sandbox (`--offset/--limit/--grep`)  |
 | `lakonai gain`                                            | Token savings - input (measured) and output (estimated)        |
 | `lakonai doctor`                                          | Per-platform health: CLI on PATH, rule, hooks                  |
 
@@ -142,7 +173,7 @@ Full flags, filters, env vars and internals: **[docs/reference.md](docs/referenc
 
 | Agent                     | Installs                                             | Shell filter | Read/Grep guard | Auto-learn |
 | ------------------------- | ---------------------------------------------------- | :----------: | :-------------: | :--------: |
-| Claude Code               | `~/.claude/CLAUDE.md` + 5 hooks + MCP compress       |   ✅ hook    | ✅ tool + shell |     ✅     |
+| Claude Code               | `~/.claude/CLAUDE.md` + 6 hooks + MCP compress       |   ✅ hook    | ✅ tool + shell |     ✅     |
 | Codex / Gemini            | rule in `~/.codex/AGENTS.md` · `~/.gemini/GEMINI.md` |   ✅ shim    | ✅ shell reads  |     ✅     |
 | Cursor / Windsurf / Cline | per-project rule (`--here`)                          |   ✅ shim    | ✅ shell reads  |     ✅     |
 

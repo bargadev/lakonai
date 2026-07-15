@@ -40,6 +40,12 @@ Usage:
                              not just the ones with a hook API. Prepends
                              ~/.lakon/shim to PATH in your shell rc.
 
+  lakonai peek [id]          Read output that was parked in the sandbox. No id
+                             lists what's parked. Flags: --offset N --limit N
+                             --grep <regex>. Output too big for the context
+                             budget is spilled to disk automatically and replaced
+                             with a digest - this is how you read the rest.
+
   lakonai gain               Show token savings - INPUT (shell output, measured)
                              AND OUTPUT (how much terser the model writes; measured
                              weekly via your local AI CLI, no API key)
@@ -67,6 +73,56 @@ Update notifications:
   Disable with LAKON_NO_UPDATE_CHECK=1.
 `;
 
+// Returns what the agent should see: the filtered text when it fits the budget,
+// otherwise a digest pointing at the parked full output. Falls back to the
+// filtered text if the spill can't be written (read-only home, full disk).
+function maybeSpill({ cmd, args, exitCode, filtered }) {
+  const sandbox = require('../src/sandbox');
+  const tokens = countTokensApprox(filtered);
+  if (!sandbox.shouldSpill(tokens, sandbox.spillThreshold())) return filtered;
+  const parked = sandbox.spill({ cmd, args, exitCode, text: filtered });
+  /* istanbul ignore next -- disk failure path */
+  if (!parked) return filtered;
+  return parked.digest;
+}
+
+function runPeek(rest) {
+  const sandbox = require('../src/sandbox');
+  const [id, ...flags] = rest;
+  if (!id) {
+    const recent = sandbox.list();
+    if (!recent.length) {
+      process.stdout.write('lakonai: no parked output yet.\n');
+      return;
+    }
+    process.stdout.write(
+      'Parked output (newest first):\n' +
+        recent.map((s) => `  ${s.id}  ${Math.round(s.bytes / 1024)}KB`).join('\n') +
+        '\n'
+    );
+    return;
+  }
+  let text;
+  try {
+    text = sandbox.read(id);
+  } catch {
+    process.stderr.write(`lakonai: no parked output with id ${id}. Try \`lakonai peek\` to list.\n`);
+    process.exit(1);
+  }
+  const flag = (name) => {
+    const i = flags.indexOf(name);
+    return i >= 0 ? flags[i + 1] : undefined;
+  };
+  const pattern = flag('--grep');
+  if (pattern != null) {
+    process.stdout.write(sandbox.grep(text, pattern) + '\n');
+    return;
+  }
+  const offset = Number(flag('--offset')) || 1;
+  const limit = Number(flag('--limit')) || 100;
+  process.stdout.write(sandbox.slice(text, { offset, limit }) + '\n');
+}
+
 function runAndFilter(cmd, args) {
   // Universal Read-guard: refuse junk reads (lockfiles/node_modules) done via the
   // shell (`cat pnpm-lock.yaml`) on ANY agent that uses the shim - same deny rules
@@ -92,15 +148,21 @@ function runAndFilter(cmd, args) {
   /* istanbul ignore next -- defensive empty-stream fallbacks */
   const raw = merge ? (child.stdout || '') + (child.stderr || '') : child.stdout || '';
   const filtered = isSupported(cmd) ? filterCommand(cmd, args, raw) : raw;
-  process.stdout.write(filtered);
+  // Last line of defence: the filters have already had their go, and it is STILL
+  // too big. Park it on disk and hand back a digest, so the bytes cost nothing
+  // per turn but stay one `lakonai peek` away.
+  const shown = maybeSpill({ cmd, args, exitCode: child.status, filtered });
+  process.stdout.write(shown);
   /* istanbul ignore next */
-  if (filtered && !filtered.endsWith('\n')) process.stdout.write('\n');
+  if (shown && !shown.endsWith('\n')) process.stdout.write('\n');
 
   tracking.record({
     cmd,
     args,
     rawTokens: countTokensApprox(raw),
-    filteredTokens: countTokensApprox(filtered),
+    // What the agent actually pays for is `shown`, not `filtered` — on a spill
+    // those differ by orders of magnitude, and `gain` must report the truth.
+    filteredTokens: countTokensApprox(shown),
   });
 
   // Auto-learning off the universal log (throttled hourly) - runs on EVERY agent,
@@ -399,6 +461,10 @@ async function main() {
   if (first === 'doctor') {
     const doctor = require('../src/doctor');
     process.stdout.write(doctor.format(doctor.report()));
+    return;
+  }
+  if (first === 'peek') {
+    runPeek(rest);
     return;
   }
   /* istanbul ignore next -- long-running stdio MCP proxy; logic tested via src/mcp-shrink */
