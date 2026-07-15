@@ -31,7 +31,13 @@ function filterLog(raw) {
       pendingHash = null;
     }
   }
-  return truncateLines(out.join('\n'), 50);
+  const joined = out.join('\n');
+  // This parser only recognises the verbose "commit <sha> / Author: / Date:"
+  // shape. `--oneline` and `--format=…` never emit it, so nothing matched and the
+  // join returned "" — swallowing the output whole. Those formats are already
+  // terse; hand them back untouched. Never answer a command with silence.
+  if (!joined && text.trim()) return truncateLines(text.replace(/\s+$/, ''), 50);
+  return truncateLines(joined, 50);
 }
 
 function filterStatus(raw) {
@@ -62,7 +68,18 @@ function filterStatus(raw) {
   const parts = [];
   if (changed.length) parts.push(`changed:\n${changed.join('\n')}`);
   if (untracked.length) parts.push(`untracked:\n${untracked.join('\n')}`);
-  return parts.join('\n\n') || 'clean';
+  if (parts.length) return parts.join('\n\n');
+
+  // Nothing parsed. The section headers this parser keys on only exist in the
+  // LONG format — `--short`/`-s`/`--porcelain` emit bare `XY path` lines, so a
+  // blind `|| 'clean'` here reported a dirty tree as clean. Only ever say clean
+  // when git said so; otherwise hand back what git printed. The short formats are
+  // already terse, so passthrough costs nothing.
+  if (/nothing to commit|working tree clean|working directory clean/i.test(text)) return 'clean';
+  // Trailing-only trim: in porcelain the leading column is significant (" M" is
+  // unstaged, "M " is staged), so trimming the start would flip the meaning.
+  const rest = text.replace(/\s+$/, '');
+  return rest.trim() ? rest : 'clean';
 }
 
 function filterDiff(raw) {
@@ -79,7 +96,11 @@ function filterDiff(raw) {
       out.push(line);
     }
   }
-  return truncateLines(out.join('\n'), 120);
+  const joined = out.join('\n');
+  // Same trap as filterLog: `--stat` and `--name-only` carry no hunk markers, so
+  // nothing matched and the output vanished. They are already terse — pass through.
+  if (!joined && text.trim()) return truncateLines(text.replace(/\s+$/, ''), 120);
+  return truncateLines(joined, 120);
 }
 
 function filter(subcmd, raw) {

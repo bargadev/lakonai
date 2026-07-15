@@ -97,6 +97,79 @@ test('git.filterStatus returns "clean" when nothing changed', () => {
   assert.equal(git.filterStatus(raw), 'clean');
 });
 
+// Regression: the parser keys on long-format section headers, which --short does
+// not emit. It used to fall through to `|| 'clean'` and report a dirty tree as
+// clean — a filter inventing state is worse than no filter at all.
+test('git.filterStatus does not call a dirty --short tree "clean"', () => {
+  const raw = ' M README.md\n M bin/lakonai.js\n?? src/sandbox.js\n';
+  const out = git.filterStatus(raw);
+  assert.notEqual(out, 'clean');
+  assert.match(out, /README\.md/);
+  assert.match(out, /\?\? src\/sandbox\.js/);
+});
+
+test('git.filterStatus keeps the porcelain leading column intact', () => {
+  // " M" (unstaged) vs "M " (staged) — trimming the start would flip the meaning.
+  assert.match(git.filterStatus(' M README.md\n'), /^ M README\.md$/);
+  assert.match(git.filterStatus('M  README.md\n'), /^M {2}README\.md$/);
+});
+
+test('git.filterStatus still says "clean" on an empty --short output', () => {
+  assert.equal(git.filterStatus(''), 'clean');
+  assert.equal(git.filterStatus('\n\n'), 'clean');
+});
+
+// Regression: filterLog only recognises the verbose "commit <sha>" shape, so
+// --oneline / --format matched nothing and the join returned "" — the filter
+// answered a perfectly good command with silence.
+test('git.filterLog does not swallow --oneline output', () => {
+  const raw = '12bd819 fix: cap LLM duration (#13)\n7d442c9 feat: add spill\n';
+  const out = git.filterLog(raw);
+  assert.notEqual(out, '');
+  assert.match(out, /12bd819/);
+  assert.match(out, /7d442c9/);
+});
+
+test('git.filterLog does not swallow --format output', () => {
+  assert.match(git.filterLog('12bd819|fix: cap LLM duration\n'), /12bd819/);
+});
+
+test('git.filterLog still compacts the verbose format', () => {
+  const raw = 'commit 12bd819abc\nAuthor: x <x@y>\nDate: Mon\n\n    fix: cap LLM duration\n';
+  const out = git.filterLog(raw);
+  assert.match(out, /^12bd819 fix: cap LLM duration$/);
+  assert.doesNotMatch(out, /Author|Date/);
+});
+
+test('git.filterLog: empty in, empty out', () => {
+  assert.equal(git.filterLog(''), '');
+});
+
+test('git.filterDiff does not swallow --stat output', () => {
+  const raw = ' README.md | 5 +++--\n 1 file changed, 3 insertions(+), 2 deletions(-)\n';
+  const out = git.filterDiff(raw);
+  assert.notEqual(out, '');
+  assert.match(out, /1 file changed/);
+});
+
+test('git.filterDiff does not swallow --name-only output', () => {
+  const out = git.filterDiff('README.md\nsrc/sandbox.js\n');
+  assert.match(out, /README\.md/);
+  assert.match(out, /src\/sandbox\.js/);
+});
+
+test('git.filterDiff still strips index/--- /+++ noise from a real diff', () => {
+  const raw = 'diff --git a/x b/x\nindex 1..2\n--- a/x\n+++ b/x\n@@ -1 +1 @@\n-old\n+new\n';
+  const out = git.filterDiff(raw);
+  assert.match(out, /@@ -1 \+1 @@/);
+  assert.match(out, /\+new/);
+  assert.doesNotMatch(out, /index 1\.\.2/);
+});
+
+test('git.filterDiff: empty in, empty out', () => {
+  assert.equal(git.filterDiff(''), '');
+});
+
 test('git.filterLog truncates very long histories', () => {
   const raw = Array.from({ length: 80 }, (_, i) =>
     `commit ${'a'.repeat(40)}\nAuthor: U <u@e>\nDate:   Mon Jan 1 12:00:00 2024\n\n    msg ${i}\n`
