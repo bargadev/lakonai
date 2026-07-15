@@ -35,6 +35,9 @@ dispatch (src/filters/index.js → filterCommand), in order:
    3. declarative engine def matches full command?  → engine.applyDef
    4. command auto-learned?                         → src/filters/auto.js
    5. none                                          → passthrough (raw)
+   │
+   ▼  still over the token budget after all that?
+sandbox spill (src/sandbox.js) → full text to disk, digest to the agent
 ```
 
 `needsStderr(cmd,args)` decides whether stderr must be captured and merged
@@ -42,6 +45,57 @@ dispatch (src/filters/index.js → filterCommand), in order:
 
 `supportedFirstWords()` = `builtinFirstWords()` (handlers + test runners + engine
 defs) ∪ `learn.learnedCommands()`. The hook intercepts exactly this set.
+
+## Sandbox spill (`src/sandbox.js`) — the last line of defence
+
+The filters cap *known* commands. A spill catches what survives them: output that
+is still over budget after filtering (an unfiltered command, or a filter whose cap
+is generous). The full text goes to `~/.lakon/sandbox/<id>.txt`; the agent gets a
+digest (head 5 / tail 15 + how to query). Nothing is lost — it just stops costing
+context on every turn.
+
+- `spillThreshold(env)` — `LAKON_SPILL_TOKENS`, default `DEFAULT_SPILL_TOKENS`
+  (2000). **`0` disables spilling.**
+- `shouldSpill(tokens, threshold)` — strict `>`.
+- `spill({cmd,args,exitCode,text})` → `{id, path, digest}`, or **`null`** if the
+  write fails (read-only home / full disk). `bin/lakonai.js` then falls back to the
+  filtered text: a spill must never break the command the user actually ran.
+- `slice` / `grep` / `list` / `gc` back `lakonai peek`. `gc` keeps the newest
+  `KEEP_SPILLS` (50) and drops anything past `MAX_AGE_MS` (24h); it runs on every
+  spill, best-effort.
+
+**Two entry points, and the second is the important one:**
+
+1. `bin/lakonai.js` (`maybeSpill`) — spills what lakonai itself executed. Limited
+   to routed commands, and to stdout unless `needsStderr()` is true.
+2. **`src/hooks/output-spill.js` (`PostToolUse`) — the universal net.** It runs
+   after ANY tool and receives the real result, so it catches what (1) never sees:
+   unrouted Bash (`terraform plan`, `./deploy.sh`), stderr, and `Read`/`Grep`/
+   `Glob`/`WebFetch`/`Task` output. `SPILLABLE_TOOLS` deliberately excludes
+   `Edit`/`Write`/`TodoWrite` — structural results, not bulk.
+
+**`PostToolUse` is the ONLY event that can replace a tool result**
+(`updatedToolOutput`). PreToolUse fires before the output exists — it can cap
+input (`updatedInput`) or deny, but it can never park output. Do not try to move
+this to PreToolUse.
+
+The hook input carries the result in **`tool_response`** (`tool_output` is
+accepted as a fallback), and it is a **string for some tools and an object for
+others** — `extractText()` prefers a real content field (`content`, `file.content`,
+`output`, `stdout`) over stringifying the wrapper, which would park JSON noise
+instead of the payload. `isAlreadyDigest()` stops (2) from re-parking what (1)
+already parked.
+
+**The digest reports lines + KB, never a token estimate.** `countTokensApprox()`
+splits on whitespace and undercounts a real tokenizer by ~35% on prose (more on
+code). It is fine for the internal spill *decision* and for `gain`'s ratio, but
+quoting it to the user as "~N tokens" is the overclaiming this project exists to
+call out. A test asserts the digest carries no `~N tokens` string — keep it that
+way.
+
+`tracking.record()` logs `filteredTokens` = tokens of what was **shown** (the
+digest on a spill), not of the filtered text. `gain` must report what the agent
+actually paid, not what it would have paid.
 
 ## The three filter layers
 
@@ -148,8 +202,29 @@ reason it is not a SessionStart auto-rewrite.
 ## Hooks (`src/hooks/`)
 
 - `bash-rewrite.js` — PreToolUse; rewrites supported Bash commands to `lakonai …`.
-- `read-guard.js` — denies Reads of build/dep dirs & lockfiles; caps huge files.
-- `grep-guard.js` — auto-caps Grep `head_limit`.
+  The allowlist bounds what gets *filtered*; it no longer bounds what gets
+  *spilled* — `output-spill.js` nets the rest at PostToolUse. Still worth knowing:
+  `cd x && git status` and `FOO=1 pytest` rewrite to nothing (only the first word
+  is inspected), so they skip the filters. Widening that means shell parsing
+  (quotes, `$(…)`, heredocs), which stays deliberately un-done.
+- `read-guard.js` — denies Reads of build/dep dirs & lockfiles; caps huge files via
+  `capForFile(path)`, which returns `null` (fits) / `{limit,lines,tokens}` (cap) /
+  `{deny:true,…}` (uncappable). **Two ceilings, tighter wins:** `AUTO_CAP_LINES`
+  (800) for many ordinary lines, and `READ_TOKEN_BUDGET` (8000) enforced as bytes
+  for few wide ones. The byte budget is not a new policy — 800 lines of ~40-byte
+  code is already ~8k tokens — it just makes the implied budget enforceable on
+  files whose lines are not ordinary. **Never drop it back to a pure line count:**
+  that is exactly how a 100-line × 5000-char JSON (~124k tokens) used to pass.
+  A single line over budget is **denied**, not capped: `Read` slices by line, so
+  `limit: 1` on a one-line file is still the whole file.
+  `fileLineCount()` samples a 64KB prefix past `FULL_READ_LIMIT` (4MB) instead of
+  slurping — it used to `readFileSync` a 500MB file just to count `\n`.
+- `output-spill.js` — **PostToolUse**; the universal net. See the sandbox section.
+- `grep-guard.js` — auto-caps Grep `head_limit`. **Known bug:** it calls
+  `trackRecord` with hardcoded `rawTokens: 200, filteredTokens: 50`, so every Grep
+  logs an invented 150-token saving into `gain`. PreToolUse cannot know the output
+  size (it does not exist yet) — either move the measurement to PostToolUse or stop
+  logging there.
 - `session-start.js` — update notice. `stop-hook.js` — records session usage AND
   runs the learner. `throttle.js` — rate-limits notices.
 - Hook entry points guard runtime with `if (require.main === module)` so they can
@@ -219,6 +294,7 @@ src/filters/defs.js         declarative filter definitions (data)
 src/filters/auto.js         conservative auto-learned filter
 src/filters/utils.js        stripAnsi, truncateLines, dedupConsecutive, groupByDir
 src/learn.js                auto-learning (transcript → stats → promote)
+src/sandbox.js              spill oversized output to disk + `lakonai peek` back
 src/doctor.js               `lakonai doctor` — per-platform health (CLI/rule/hooks)
 src/bench.js                self-contained filter benchmark (shown by `gain` when empty)
 src/mcp-shrink.js           MCP description compressor + `__mcp` stdio proxy
@@ -228,7 +304,7 @@ src/install/mcp.js          auto-wrap MCP servers in ~/.claude.json (reversible)
 ```
 
 Visible user commands: `install`, `upgrade`, `uninstall`, `revert`, `shim`,
-`compress-memory`/`revert-memory`, `gain`, `doctor`, `version`. (`backups` was
+`compress-memory`/`revert-memory`, `gain`, `doctor`, `peek`, `version`. (`backups` was
 removed; `compress-memory` takes a freeform instruction + `--prune`/`--rewrite`
 validation levels; `upgrade` self-updates via the detected package manager + an
 oh-my-zsh-style `[Y/n]` prompt; `install` offers the shim only when a hook-less

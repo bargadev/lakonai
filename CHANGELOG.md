@@ -6,6 +6,66 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-07-15
+
+### Added
+- **Sandbox spill — output that survives the filters stops costing context.** When
+  a command's output is still over budget after filtering, the full text is parked
+  in `~/.lakon/sandbox/<id>.txt` and the agent gets a digest instead: head, tail,
+  exit code, and how to query the rest. Nothing is lost — it just stops being
+  re-paid every turn. Measured on a 4000-line build log: **4000 lines / 120KB in,
+  29 lines out.**
+- **`lakonai peek [id]`** — read parked output back: `--offset N`, `--limit N`,
+  `--grep <regex>`. No id lists what's parked. Spills are garbage-collected (newest
+  50, 24h).
+- **The spill is universal, not allowlist-bound.** A new `PostToolUse` hook
+  (`output-spill.js`) runs after ANY tool and receives the real result, so it nets
+  what the `PreToolUse` rewrite structurally cannot: unrouted Bash (`terraform
+  plan`, `./deploy.sh`), **stderr**, and `Read`/`Grep`/`Glob`/`WebFetch`/`Task`
+  output. `PostToolUse` is the only event that can replace a tool result
+  (`updatedToolOutput`) — PreToolUse fires before the output exists.
+  `Edit`/`Write`/`TodoWrite` are excluded: structural results, not bulk.
+- `LAKON_SPILL_TOKENS` tunes the budget; **`0` disables spilling entirely.**
+
+### Fixed
+- **`read-guard` let wide-line files through untouched.** The auto-cap counted
+  *lines* (`AUTO_CAP_LINES`, 800) and ignored how wide they were, so a 100-line ×
+  5000-char JSON — 100 lines, under the cap, **~124k tokens** — sailed straight
+  into context. The cap now also enforces a byte budget (`READ_TOKEN_BUDGET`,
+  8000): the limit is derived from `size/lines`, and the tighter of the two
+  ceilings wins. Ordinary code is unaffected (800 lines of ~40-byte lines is
+  already ~8k tokens, so the line cap still bites first).
+  - A file whose **single line** already blows the budget (minified bundle,
+    one-line JSON dump) is now **denied**: `Read` slices by line, so even
+    `limit: 1` would hand over the whole file. The denial points at `jq`/`grep -o`,
+    which can cut inside a line.
+  - Honest scope: the 124k figure is a constructed worst case. Replayed against a
+    real 6k-command log, the measurable recovery was ~5.7k tokens — most capped
+    Reads there were ordinary-width files the line cap already handled, and 14 of
+    20 candidate files no longer existed to test. This closes a demonstrated hole;
+    it is not a large across-the-board win.
+- **`fileLineCount` slurped whole files into RAM** just to count `\n` — on the very
+  files this guard exists for. Past `FULL_READ_LIMIT` (4MB) it now samples a 64KB
+  prefix and extrapolates; the number only feeds a cap decision, and a 500MB file
+  is getting capped regardless of the exact count.
+- **`git status --short` reported a dirty tree as `clean`.** `filterStatus` keys on
+  long-format section headers ("Changes not staged", "Untracked files:"), which
+  `--short`/`-s`/`--porcelain` never emit — so nothing was parsed and it fell
+  through to a hardcoded `'clean'`. It now only says clean when git actually said
+  so, and passes the (already terse) short formats through untouched, preserving
+  the significant leading column (` M` unstaged vs `M ` staged). A filter that
+  invents state is worse than no filter.
+
+### Notes
+- The spill reaches **routed commands only** (first word must be one lakonai
+  knows), and **stdout only except for test runners** — `needsStderr()` is false
+  for `npm run build`/`docker logs`, so their stderr bypasses the spill and still
+  costs context. Both limits are documented in the README rather than papered over.
+- The digest reports measured lines + KB, never an estimated token count:
+  `countTokensApprox()` splits on whitespace and undercounts a real tokenizer by
+  ~35% on prose. A tool that exists to be honest about token cost should not quote
+  a number it cannot stand behind.
+
 ## [0.16.5] - 2026-06-09
 
 ### Fixed
