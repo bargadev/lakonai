@@ -6,6 +6,22 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [0.17.1] - 2026-07-16
+
+### Fixed
+- **0.17.0 never reached npm.** Its publish workflow ran `npm test` before
+  `npm publish`, and a test in this release hung the CI runner instead of
+  failing: it pointed `LAKON_HOME` at `/proc/nonexistent-lakon/deep` to force a
+  write failure, which fails fast on macOS (`/proc` doesn't exist there) but on
+  the Linux Actions runner made `mkdirSync` hang instead of throwing. Jest never
+  exited, `npm test` never completed, and the job sat until the Actions 6h
+  global timeout killed it — silently, with no error pointing at the cause.
+  Replaced the OS-dependent path with a deterministic `fs.mkdirSync` mock, and
+  added `forceExit`/`testTimeout` (15s) to `jest.config.js` so a stuck test
+  fails fast instead of blocking every subsequent publish for hours.
+- This release carries 0.17.0's changes (sandbox spill, the read-guard and git
+  filter fixes below) plus this CI fix, since 0.17.0 itself was never published.
+
 ## [0.17.0] - 2026-07-15
 
 ### Added
