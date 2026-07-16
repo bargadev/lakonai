@@ -104,10 +104,20 @@ describe('spill + read round-trip', () => {
   });
 
   test('returns null instead of throwing when the spill cannot be written', () => {
-    process.env.LAKON_HOME = '/proc/nonexistent-lakon/deep';
-    jest.resetModules();
-    const s = require('../src/sandbox');
-    assert.equal(s.spill({ cmd: 'ls', args: [], exitCode: 0, text: lines(10) }), null);
+    // A real unwritable path (e.g. /proc/... on Linux) is not a reliable way to
+    // force this: procfs write behavior is platform- and runner-specific, and on
+    // a GitHub Actions Linux runner this previously hung `mkdirSync` indefinitely
+    // instead of throwing — Jest never exited, npm test never completed, and the
+    // publish workflow's 6h job timeout was the only thing that ever stopped it.
+    // Force the failure deterministically instead of depending on OS/fs quirks.
+    const mkdirSpy = jest.spyOn(fs, 'mkdirSync').mockImplementation(() => {
+      throw new Error('EACCES: permission denied (simulated)');
+    });
+    try {
+      assert.equal(sandbox.spill({ cmd: 'ls', args: [], exitCode: 0, text: lines(10) }), null);
+    } finally {
+      mkdirSpy.mockRestore();
+    }
   });
 });
 
