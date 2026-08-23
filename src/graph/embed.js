@@ -42,7 +42,8 @@ function nodeText(n) {
   const params = Array.isArray(n.params) && n.params.length
     ? ` params ${n.params.join(' ')}`
     : '';
-  return base + params;
+  const doc = n.docblock ? ` ${n.docblock}` : '';
+  return base + params + doc;
 }
 
 // Generate embeddings for all nodes. Returns [{id, embedding: number[]}].
