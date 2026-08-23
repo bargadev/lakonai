@@ -68,7 +68,7 @@ async function run() {
   let embeddingsData = null;
   if (hasXenova()) {
     if (!fs.existsSync(EMB_PATH)) {
-      console.log('semantic: generating embeddings (first run downloads ~80MB model)…');
+      console.log('semantic: generating embeddings (first run downloads ~23MB model)…');
       const { generateEmbeddings } = require('../src/graph/embed');
       const embs = await generateEmbeddings(graph.nodes);
       fs.mkdirSync(GRAPH_DIR, { recursive: true });

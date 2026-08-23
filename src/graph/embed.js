@@ -78,13 +78,17 @@ async function generateEmbeddings(nodes) {
 }
 
 // Embed a single query string. Returns number[].
+// BGE retrieval instruction — prepended to queries only (not to corpus).
+// Documented to improve asymmetric retrieval quality on BGE models.
+const BGE_QUERY_PREFIX = 'Represent this sentence for searching relevant passages: ';
+
 async function embedQuery(question) {
   const xeno = await tryXenova();
   if (!xeno) throw new Error('@xenova/transformers not installed');
 
   const { pipeline } = xeno;
   const embedder = await pipeline('feature-extraction', MODEL, { quantized: true });
-  const out = await embedder([question], { pooling: 'mean', normalize: true });
+  const out = await embedder([BGE_QUERY_PREFIX + question], { pooling: 'mean', normalize: true });
   embedder.dispose();
   return Array.from(out.data);
 }
