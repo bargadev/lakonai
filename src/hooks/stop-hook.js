@@ -71,6 +71,12 @@ async function main() {
     const { isBuiltinSupported } = require('../filters');
     learn.analyzeTranscript(data.transcript_path, isBuiltinSupported);
 
+    // Daily sink report — written silently to ~/.lakon/learn-report.md.
+    // session-start will surface a one-line summary the next time around.
+    try {
+      require('../learn-report').maybeWriteReport(isBuiltinSupported);
+    } catch { /* never break the hook */ }
+
     const usage = extractUsage(data.transcript_path);
     if (!usage) process.exit(0);
 

@@ -63,6 +63,16 @@ new version, no-ops when the version is unchanged, and **fails** if the version
 was bumped to one that already exists on npm. Never bump the version without a
 CHANGELOG entry in the same PR.
 
+## Test types — every new feature needs all three layers
+
+For every new feature or subsystem, provide tests at three levels:
+
+1. **Unit** — test the pure logic directly (no I/O, no subprocess). One `describe` block per module/function. Cover edge cases: empty input, nil/falsy, boundary values.
+2. **Integration** — test the feature wired to real I/O (real FS, real JSON, real in-process module graph). No mocks on I/O boundaries. Confirm files are written, data round-trips correctly, modules interact as expected.
+3. **E2E / CLI** — spawn the real CLI process (`spawnSync('node', ['bin/lakonai.js', ...])`) and assert on stdout/stderr/exit code. Prove the wire-up from the user's perspective.
+
+**Do not ship a feature that has only unit tests.** Integration proves the glue; E2E proves the UX. All three levels must be present before a commit is ready.
+
 ## Testing policy — tests before commit (only at commit time)
 
 This project uses **Jest** with a coverage gate. The rule:
@@ -80,19 +90,33 @@ Concretely, before running `git commit` for a feature:
 
 1. Add/extend Jest tests covering the new behavior (happy path + edge cases).
 2. Run `npm test` — it must exit green.
-3. Run `npm run test:coverage` — global coverage must stay **≥ 80%**
-   (lines / branches / functions / statements). Aim for 100%.
+3. Run `npm run test:coverage` — global gate is **≥ 80%**, but the target for
+   every new file is **100%**. Write tests until coverage reaches 100% for the
+   files you touched; only then is the commit ready.
 4. Then commit.
+
+## Coverage target: 100%
+
+The goal is **100% coverage on every new file**. The global Jest threshold is set
+to 100% — a commit that drops below fails CI. `/* istanbul ignore next */` is
+allowed only for: I/O entry points (`main`, `readStdin`), best-effort tracking
+blocks that must never throw, and platform detection branches that can't be
+simulated in the test environment (document the reason inline).
+
+For integration tests that spawn subprocesses (`spawnSync('node', [hook])`):
+coverage instrumentation does not track the child — add a companion in-process
+unit test for the same logic so the module shows coverage. Both test types are
+valuable: integration proves the wire-up, unit proves the logic and drives coverage.
 
 ## Test commands
 
 ```bash
-npm test                 # run the Jest suite
-npm run test:coverage     # suite + coverage table (text + HTML in ./coverage)
-npm run test:coverage:check  # same; the 80% threshold makes it fail if below
+npm test                      # run the Jest suite
+npm run test:coverage          # suite + coverage table (text + HTML in ./coverage)
+npm run test:coverage:check    # same; fails if below 100% threshold
 ```
 
-Coverage thresholds live in `jest.config.js` (`coverageThreshold.global`, 80%).
+Coverage thresholds live in `jest.config.js` (`coverageThreshold.global`, 100%).
 The HTML report is written to `coverage/index.html`.
 
 ## Testing conventions

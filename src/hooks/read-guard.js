@@ -172,6 +172,48 @@ function estimateTokensByBytes(p) {
   }
 }
 
+// Return a graph subgraph summary for a file if lakonai-graph/graph.json exists
+// in any ancestor directory. Returns null if no graph or file not in graph.
+function graphSubgraphFor(filePath) {
+  try {
+    // Search for graph.json in ancestor dirs (up to 6 levels)
+    let dir = path.dirname(path.resolve(filePath));
+    let graphJson = null;
+    for (let i = 0; i < 6; i++) {
+      const candidate = path.join(dir, 'lakonai-graph', 'graph.json');
+      if (fs.existsSync(candidate)) { graphJson = candidate; break; }
+      const parent = path.dirname(dir);
+      if (parent === dir) break;
+      dir = parent;
+    }
+    if (!graphJson) return null;
+
+    const graph = JSON.parse(fs.readFileSync(graphJson, 'utf8'));
+    const rootDir = path.dirname(path.dirname(graphJson)); // parent of lakonai-graph/
+    const relPath = path.relative(rootDir, path.resolve(filePath));
+
+    const fileNodes = graph.nodes.filter((n) => n.file === relPath);
+    if (!fileNodes.length) return null;
+
+    const nodeIds = new Set(fileNodes.map((n) => n.id));
+    const edges = graph.edges.filter((e) => nodeIds.has(e.from) || nodeIds.has(e.to));
+
+    const lines = [`lakonai-graph: ${fileNodes.length} nodes, ${edges.length} edges — ${relPath}`];
+    for (const n of fileNodes) {
+      if (n.kind === 'file') continue;
+      lines.push(`  ${n.label} [${n.kind}] ${n.file}:${n.line}`);
+      const out = edges.filter((e) => e.from === n.id).slice(0, 4);
+      const inc = edges.filter((e) => e.to === n.id).slice(0, 4);
+      for (const e of out) lines.push(`    --> ${e.to} [${e.rel}] [${e.tag}]`);
+      for (const e of inc) lines.push(`    <-- ${e.from} [${e.rel}] [${e.tag}]`);
+    }
+    lines.push(`\n(set LAKON_GRAPH_CAT=0 to read the raw file instead)`);
+    return lines.join('\n');
+  } catch {
+    return null;
+  }
+}
+
 /* istanbul ignore next */
 async function readStdin() {
   let raw = '';
@@ -191,6 +233,26 @@ async function main() {
     const input = data.tool_input || {};
     const fp = input.file_path;
     if (typeof fp !== 'string' || !fp) process.exit(0);
+
+    // Graph intercept: if graph.json exists for this project and LAKON_GRAPH_CAT != '0',
+    // substitute a compact subgraph summary instead of the raw file read.
+    if (process.env.LAKON_GRAPH_CAT !== '0') {
+      const graphSummary = graphSubgraphFor(fp);
+      if (graphSummary) {
+        const rawTokens = estimateTokensByBytes(fp);
+        const summaryTokens = Math.ceil(graphSummary.length / 4);
+        trackRecord({ cmd: 'Read', args: [fp, 'graph'], rawTokens, filteredTokens: summaryTokens });
+        const response = {
+          hookSpecificOutput: {
+            hookEventName: 'PreToolUse',
+            permissionDecision: 'deny',
+            permissionDecisionReason: graphSummary,
+          },
+        };
+        process.stdout.write(JSON.stringify(response));
+        process.exit(0);
+      }
+    }
 
     const denyReason = isDeniedPath(fp);
     if (denyReason) {
@@ -273,6 +335,7 @@ module.exports = {
   sampledLineCount,
   capForFile,
   estimateTokensByBytes,
+  graphSubgraphFor,
   lakonHome,
   trackRecord,
   DENY_DIRS,

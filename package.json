@@ -46,12 +46,19 @@
   ],
   "scripts": {
     "test": "jest",
+    "test:unit": "jest --testPathPattern='(?<!integration|e2e-proxy|cli|bash-rewrite|grep-guard|learn-report-integration|mem-llm|session-start|stop-hook)\\.test\\.js$'",
+    "test:integration": "jest --testPathPattern='(graph-integration|graph-parser|proxy-server|learn-report-integration|bash-rewrite|grep-guard|session-start|stop-hook)\\.test\\.js$'",
+    "test:e2e": "jest --testPathPattern='(cli|e2e-proxy|integration)\\.test\\.js$'",
     "test:coverage": "jest --coverage",
     "test:coverage:check": "jest --coverage",
     "bench": "node -e \"process.stdout.write(require('./src/bench').format(require('./src/bench').runBench()))\""
   },
   "engines": {
     "node": ">=18"
+  },
+  "optionalDependencies": {
+    "@xenova/transformers": "^2.17.2",
+    "canvas": "^2.11.2"
   },
   "devDependencies": {
     "jest": "^29.7.0"
