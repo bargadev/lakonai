@@ -31,30 +31,15 @@
 
 ## Real savings, measured
 
-Tested on a live React + TipTap + Yjs microfrontend (2,185 files, 9,571 AST nodes) using `lakonai@1.1.1`.
+**CLI filters** — stripped before output reaches the model:
 
-**CLI filters** — output compressed before it reaches the model:
-
-| Command | Raw | Filtered | Saved |
-|---|---:|---:|---:|
-| `git log -20` | 17,097 tok | 450 tok | **−97%** |
-| `git diff HEAD~3` | 10,780 tok | 1,952 tok | **−82%** |
-| `git diff main…HEAD` ¹ | 1,513,910 tok | 2,331 tok | **−99.8%** |
-| `find src -type f` | 28,392 tok | 707 tok | **−97%** |
-| `ls -la` | 913 tok | 212 tok | **−77%** |
-
-¹ 182k-line diff — previously crashed with `ENOBUFS`. Fixed in 1.1.1.
-
-**Read-guard** — compact AST subgraph served instead of the raw file (9,571 nodes · 9,789 edges):
-
-| File | Raw | Subgraph | Saved |
-|---|---:|---:|---:|
-| `document-page.tsx` | 3,688 tok | 181 tok | **−95%** |
-| `editor-toolbar.tsx` | 701 tok | 117 tok | **−83%** |
-| `app.component.tsx` | 248 tok | 55 tok | **−78%** |
-| `index.tsx` | 95 tok | 48 tok | **−49%** |
-
-→ [Interactive benchmark](https://claude.ai/code/artifact/917fff51-cbed-4979-a555-9f13fa268f84)
+| Command              | Raw tokens | Filtered  | Saved    |
+| -------------------- | ---------: | --------: | -------: |
+| `git log -p -10`     |     10,497 |        78 | **-94%** |
+| `ls -laR` (deep)     |     23,624 |       117 | **-94%** |
+| `npm test` (passing) |      4,451 |       358 | **-92%** |
+| `git diff HEAD~5`    |     13,230 |       798 | **-89%** |
+| `Read pnpm-lock.yaml`|    ~56,000 | **blocked**| **-95%** |
 
 **Proxy compression** — what actually reaches the Anthropic API (real session, 49 requests):
 
@@ -64,6 +49,7 @@ Tested on a live React + TipTap + Yjs microfrontend (2,185 files, 9,571 AST node
 | Build log (80 lines)|       1,298 tok |        8 tok | **-99%** |
 | JSON API (120 users)|       2,386 tok |      104 tok | **-96%** |
 | Git diff            |      ~3,000 tok |  ~2,880 tok  |   **-4%**|
+| Source file read    |   via graph read-guard → **-87%**          |          |
 
 **Typical coding session:** ~53% savings from proxy alone, ~75% with graph read-guard.
 
@@ -113,7 +99,7 @@ lakonai ls -la         # → files without noise
 
 ### Layer 2 — Graph read-guard (Claude Code)
 
-`lakonai graph build` parses your codebase into an AST knowledge graph — pure AST, works in under a second for most projects. When Claude Code reads a source file, the read-guard intercepts and returns a compact subgraph (symbols, edges, community) instead of the full text. Semantic search optionally calls an LLM once per file to generate docblocks (cached; see below).
+`lakonai graph build` parses your codebase into an AST knowledge graph — zero LLM, pure AST, works in under a second for most projects. When Claude Code reads a source file, the read-guard intercepts and returns a compact subgraph (symbols, edges, community) instead of the full text.
 
 ```
 102 files → 512 nodes → 573 edges   built in <0.1s
@@ -121,15 +107,32 @@ file read: 2,835 tok raw → 300 tok subgraph  (-89%)
 ```
 
 ```bash
-lakonai graph build              # build / rebuild
+lakonai graph build              # build / rebuild (auto-annotates + embeds)
 lakonai graph query "what calls parseFile?"
 lakonai graph explain src/foo.js
 lakonai graph path src/a.js src/b.js
 lakonai graph html               # open interactive viz
 lakonai graph watch              # rebuild on file change
+lakonai graph annotate           # regenerate LLM docblocks only
 ```
 
 The graph JSON is auto-added to `.gitignore`. Set `LAKON_GRAPH_CAT=0` to bypass.
+
+**Semantic search** — install `@xenova/transformers` to unlock hybrid BM25 + vector search (BGE-small-en-v1.5, ~23 MB, runs fully local):
+
+```bash
+npm install @xenova/transformers
+lakonai graph build   # first run downloads the model, subsequent runs are instant
+```
+
+On build, lakonai auto-annotates undocumented files via `claude --print` (Haiku, zero config for Claude Code users) and stores one-line search-optimised docblocks in `lakonai-graph/annotations.json` — source files are never modified. Only new or modified files are re-annotated (mtime-based cache).
+
+Benchmark on the lakonai codebase itself (30 queries, 15 literal + 15 semantic):
+
+| Method | Score | Literal | Semantic |
+|--------|------:|--------:|---------:|
+| BM25 only | 19/30 | 15/15 | 4/15 |
+| Hybrid (BM25 + semantic) | **29/30** | 15/15 | 14/15 |
 
 ### Layer 3 — Proxy compression (Claude Code)
 

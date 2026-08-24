@@ -10,6 +10,7 @@ const path = require('path');
 const { buildSync } = require('../src/graph/index');
 const { nlQuery, nlQuerySemantic, nlQueryHybrid } = require('../src/graph/query');
 const { hasXenova, embedQuery } = require('../src/graph/embed');
+const { mergeAnnotations } = require('../src/graph/annotate');
 
 const ROOT = path.resolve(__dirname, '..');
 const GRAPH_DIR = path.join(ROOT, 'lakonai-graph');
@@ -17,19 +18,39 @@ const EMB_PATH = path.join(GRAPH_DIR, 'embeddings.json');
 
 // Queries: mix of literal (BM25 works well) and semantic (BM25 struggles).
 const QUERIES = [
-  // Literal — keyword present in label/file
-  { q: 'parseFile',                   type: 'literal',   expect: 'src/graph/parser.js' },
-  { q: 'compress log',                type: 'literal',   expect: 'src/proxy/compress/log.js' },
-  { q: 'BM25 tokenize',               type: 'literal',   expect: 'src/graph/query.js' },
-  { q: 'detectCommunities leiden',    type: 'literal',   expect: 'src/graph/leiden.js' },
-  { q: 'writeStats mergeStats proxy', type: 'literal',   expect: 'src/proxy/server.js' },
+  // ── Literal (keyword present in label/file/function name) ──────────────────
+  { q: 'parseFile',                        type: 'literal',  expect: 'src/graph/parser.js' },
+  { q: 'compress log',                     type: 'literal',  expect: 'src/proxy/compress/log.js' },
+  { q: 'BM25 tokenize',                    type: 'literal',  expect: 'src/graph/query.js' },
+  { q: 'detectCommunities leiden',         type: 'literal',  expect: 'src/graph/leiden.js' },
+  { q: 'writeStats mergeStats proxy',      type: 'literal',  expect: 'src/proxy/server.js' },
+  { q: 'buildGraph store',                 type: 'literal',  expect: 'src/graph/store.js' },
+  { q: 'watchDir graph',                   type: 'literal',  expect: 'src/graph/watch.js' },
+  { q: 'generateEmbeddings embed',         type: 'literal',  expect: 'src/graph/embed.js' },
+  { q: 'buildReport report',               type: 'literal',  expect: 'src/graph/report.js' },
+  { q: 'installShim install',              type: 'literal',  expect: 'src/install' },
+  { q: 'compressCode code',                type: 'literal',  expect: 'src/proxy/compress/code.js' },
+  { q: 'filterGit git filter',             type: 'literal',  expect: 'src/filters/git.js' },
+  { q: 'rewriteBash bash',                 type: 'literal',  expect: 'src/hooks/bash-rewrite.js' },
+  { q: 'throttle hook',                    type: 'literal',  expect: 'src/hooks/throttle.js' },
+  { q: 'nlQueryHybrid RRF',                type: 'literal',  expect: 'src/graph/query.js' },
 
-  // Semantic — concept, not exact keyword
-  { q: 'function that counts tokens', type: 'semantic',  expect: 'src/proxy/compress' },
-  { q: 'module that builds the dependency graph from source files', type: 'semantic', expect: 'src/graph/parser.js' },
-  { q: 'how to detect file type for compression', type: 'semantic', expect: 'src/proxy/detect.js' },
-  { q: 'save token usage to disk',    type: 'semantic',  expect: 'src/proxy/server.js' },
-  { q: 'intercept file reads and return summary', type: 'semantic', expect: 'src/hooks/read-guard.js' },
+  // ── Semantic (concept query — keyword NOT in label) ─────────────────────────
+  { q: 'function that counts tokens',                                  type: 'semantic', expect: 'src/proxy/compress' },
+  { q: 'module that builds the dependency graph from source files',    type: 'semantic', expect: 'src/graph/parser.js' },
+  { q: 'how to detect file type for compression',                      type: 'semantic', expect: 'src/proxy/detect.js' },
+  { q: 'save token usage to disk',                                     type: 'semantic', expect: 'src/proxy/server.js' },
+  { q: 'intercept file reads and return summary',                      type: 'semantic', expect: 'src/hooks/read-guard.js' },
+  { q: 'watch source files for changes and rebuild',                   type: 'semantic', expect: 'src/graph/watch.js' },
+  { q: 'convert code to vector for similarity search',                 type: 'semantic', expect: 'src/graph/embed.js' },
+  { q: 'group related nodes into clusters',                            type: 'semantic', expect: 'src/graph/leiden.js' },
+  { q: 'install platform-specific shell integration',                  type: 'semantic', expect: 'src/install' },
+  { q: 'strip comments and shrink output before sending to LLM',       type: 'semantic', expect: 'src/proxy/compress' },
+  { q: 'prevent oversized tool output from filling context window',    type: 'semantic', expect: 'src/hooks/output-spill.js' },
+  { q: 'block dangerous shell commands before they run',               type: 'semantic', expect: 'src/hooks/bash-rewrite.js' },
+  { q: 'generate interactive HTML visualization of the code graph',    type: 'semantic', expect: 'src/graph/html.js' },
+  { q: 'find shortest dependency path between two modules',            type: 'semantic', expect: 'src/graph/query.js' },
+  { q: 'rate limit requests to avoid overloading the proxy',           type: 'semantic', expect: 'src/hooks/throttle.js' },
 ];
 
 function topK(result, k = 3) {
@@ -48,9 +69,10 @@ async function run() {
   let embeddingsData = null;
   if (hasXenova()) {
     if (!fs.existsSync(EMB_PATH)) {
-      console.log('semantic: generating embeddings (first run downloads ~80MB model)…');
+      console.log('semantic: generating embeddings (first run downloads ~23MB model)…');
       const { generateEmbeddings } = require('../src/graph/embed');
-      const embs = await generateEmbeddings(graph.nodes);
+      const enriched = mergeAnnotations(graph.nodes, GRAPH_DIR);
+      const embs = await generateEmbeddings(enriched);
       fs.mkdirSync(GRAPH_DIR, { recursive: true });
       fs.writeFileSync(EMB_PATH, JSON.stringify(embs));
       console.log(`  saved: ${embs.length} vectors → ${EMB_PATH}\n`);

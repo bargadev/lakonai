@@ -9,6 +9,7 @@ const { buildReport } = require('./report');
 const { buildHtml } = require('./html');
 const { explain, shortestPath, nlQuery, nlQuerySemantic, nlQueryHybrid, formatExplain, formatPath, formatNlQuery } = require('./query');
 const { hasXenova, generateEmbeddings, embedQuery } = require('./embed');
+const { annotateGraph, mergeAnnotations } = require('./annotate');
 const { watchDir } = require('./watch');
 
 const REPORT_FILE = 'GRAPH_REPORT.md';
@@ -45,7 +46,10 @@ async function build(rootDir) {
 
   if (hasXenova()) {
     try {
-      const embeddings = await generateEmbeddings(graph.nodes);
+      // Auto-annotate files without docblocks (new + modified), then embed.
+      await annotateGraph(absRoot, dir, graph, { silent: true });
+      const enrichedNodes = mergeAnnotations(graph.nodes, dir);
+      const embeddings = await generateEmbeddings(enrichedNodes);
       fs.writeFileSync(path.join(dir, EMBEDDINGS_FILE), JSON.stringify(embeddings));
       graph._embeddingsGenerated = true;
     } catch {
@@ -91,16 +95,41 @@ function runGraph(args) {
       `    ${REPORT_FILE} — highlights\n` +
       `    ${HTML_FILE} — interactive viz\n`
     );
-    // Fire-and-forget embedding generation (non-blocking)
+    // Fire-and-forget: auto-annotate undocumented files, then generate embeddings.
     if (hasXenova()) {
       process.stdout.write('  embeddings: generating (first run downloads ~23MB model)…\n');
       const absRoot = path.resolve(rootDir);
       const dir = graphDir(absRoot);
-      generateEmbeddings(graph.nodes).then((embeddings) => {
+      annotateGraph(absRoot, dir, graph).then((annotations) => {
+        const annotCount = Object.keys(annotations).length;
+        if (annotCount) process.stdout.write(`  annotate: ${annotCount} docblock(s) cached\n`);
+        const enriched = mergeAnnotations(graph.nodes, dir);
+        return generateEmbeddings(enriched);
+      }).then((embeddings) => {
         fs.writeFileSync(path.join(dir, EMBEDDINGS_FILE), JSON.stringify(embeddings));
         process.stdout.write(`  embeddings: ${graph.meta.nodeCount} vectors written (semantic query enabled)\n    ${EMBEDDINGS_FILE} — semantic embeddings\n`);
       }).catch(() => { /* best-effort */ });
     }
+    return;
+  }
+
+  if (sub === 'annotate') {
+    const rootDir = rest[0] || '.';
+    const absRoot = path.resolve(rootDir);
+    const graph = readGraph(rootDir);
+    if (!graph) { process.stderr.write('no graph.json found — run: lakonai graph build\n'); process.exitCode = 1; return; }
+    const dir = graphDir(absRoot);
+    annotateGraph(absRoot, dir, graph).then((annotations) => {
+      const count = Object.keys(annotations).length;
+      process.stdout.write(`  annotate: ${count} docblocks stored → ${path.join(dir, 'annotations.json')}\n`);
+      if (!hasXenova()) return;
+      process.stdout.write('  embeddings: regenerating with annotations…\n');
+      const enriched = mergeAnnotations(graph.nodes, dir);
+      return generateEmbeddings(enriched).then((embs) => {
+        fs.writeFileSync(path.join(dir, EMBEDDINGS_FILE), JSON.stringify(embs));
+        process.stdout.write(`  embeddings: ${embs.length} vectors updated\n`);
+      });
+    }).catch((err) => { process.stderr.write(`annotate error: ${err.message}\n`); process.exitCode = 1; });
     return;
   }
 
