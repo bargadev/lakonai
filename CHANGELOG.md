@@ -6,6 +6,14 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-08-24
+
+### Added
+- **Auto graph build on session start** — on `SessionStart`, lakonai detects the git root and automatically triggers `lakonai graph build` in the background for projects that don't have a graph yet. Fire-and-forget; never blocks the session. Existing projects see no change.
+
+### Fixed
+- **ENOBUFS on large diffs** — `spawnSync` maxBuffer raised from 1 MB to 200 MB. If still exceeded, falls back to `stdio: 'inherit'` passthrough so output is never lost.
+
 ## [1.0.2] - 2026-08-24
 
 ### Fixed
