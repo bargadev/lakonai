@@ -99,7 +99,7 @@ lakonai ls -la         # → files without noise
 
 ### Layer 2 — Graph read-guard (Claude Code)
 
-`lakonai graph build` parses your codebase into an AST knowledge graph — zero LLM, pure regex, works in under a second for most projects. When Claude Code reads a source file, the read-guard intercepts and returns a compact subgraph (symbols, edges, community) instead of the full text.
+`lakonai graph build` parses your codebase into an AST knowledge graph — zero LLM, pure AST, works in under a second for most projects. When Claude Code reads a source file, the read-guard intercepts and returns a compact subgraph (symbols, edges, community) instead of the full text.
 
 ```
 102 files → 512 nodes → 573 edges   built in <0.1s
@@ -107,15 +107,32 @@ file read: 2,835 tok raw → 300 tok subgraph  (-89%)
 ```
 
 ```bash
-lakonai graph build              # build / rebuild
+lakonai graph build              # build / rebuild (auto-annotates + embeds)
 lakonai graph query "what calls parseFile?"
 lakonai graph explain src/foo.js
 lakonai graph path src/a.js src/b.js
 lakonai graph html               # open interactive viz
 lakonai graph watch              # rebuild on file change
+lakonai graph annotate           # regenerate LLM docblocks only
 ```
 
 The graph JSON is auto-added to `.gitignore`. Set `LAKON_GRAPH_CAT=0` to bypass.
+
+**Semantic search** — install `@xenova/transformers` to unlock hybrid BM25 + vector search (BGE-small-en-v1.5, ~23 MB, runs fully local):
+
+```bash
+npm install @xenova/transformers
+lakonai graph build   # first run downloads the model, subsequent runs are instant
+```
+
+On build, lakonai auto-annotates undocumented files via `claude --print` (Haiku, zero config for Claude Code users) and stores one-line search-optimised docblocks in `lakonai-graph/annotations.json` — source files are never modified. Only new or modified files are re-annotated (mtime-based cache).
+
+Benchmark on the lakonai codebase itself (30 queries, 15 literal + 15 semantic):
+
+| Method | Score | Literal | Semantic |
+|--------|------:|--------:|---------:|
+| BM25 only | 19/30 | 15/15 | 4/15 |
+| Hybrid (BM25 + semantic) | **29/30** | 15/15 | 14/15 |
 
 ### Layer 3 — Proxy compression (Claude Code)
 
