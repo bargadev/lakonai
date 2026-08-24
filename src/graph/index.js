@@ -46,6 +46,8 @@ async function build(rootDir) {
 
   if (hasXenova()) {
     try {
+      // Auto-annotate files without docblocks (new + modified), then embed.
+      await annotateGraph(absRoot, dir, graph, { silent: true });
       const enrichedNodes = mergeAnnotations(graph.nodes, dir);
       const embeddings = await generateEmbeddings(enrichedNodes);
       fs.writeFileSync(path.join(dir, EMBEDDINGS_FILE), JSON.stringify(embeddings));
@@ -93,12 +95,17 @@ function runGraph(args) {
       `    ${REPORT_FILE} — highlights\n` +
       `    ${HTML_FILE} — interactive viz\n`
     );
-    // Fire-and-forget embedding generation (non-blocking)
+    // Fire-and-forget: auto-annotate undocumented files, then generate embeddings.
     if (hasXenova()) {
       process.stdout.write('  embeddings: generating (first run downloads ~23MB model)…\n');
       const absRoot = path.resolve(rootDir);
       const dir = graphDir(absRoot);
-      generateEmbeddings(graph.nodes).then((embeddings) => {
+      annotateGraph(absRoot, dir, graph).then((annotations) => {
+        const annotCount = Object.keys(annotations).length;
+        if (annotCount) process.stdout.write(`  annotate: ${annotCount} docblock(s) cached\n`);
+        const enriched = mergeAnnotations(graph.nodes, dir);
+        return generateEmbeddings(enriched);
+      }).then((embeddings) => {
         fs.writeFileSync(path.join(dir, EMBEDDINGS_FILE), JSON.stringify(embeddings));
         process.stdout.write(`  embeddings: ${graph.meta.nodeCount} vectors written (semantic query enabled)\n    ${EMBEDDINGS_FILE} — semantic embeddings\n`);
       }).catch(() => { /* best-effort */ });

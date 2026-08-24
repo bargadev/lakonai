@@ -109,30 +109,53 @@ async function callLLM(src, backend) {
   throw new Error('no LLM backend — install claude CLI, set ANTHROPIC_API_KEY, or start Ollama');
 }
 
+// --- Annotation store helpers ---
+
+// annotations.json format: { "src/foo.js": { docblock: "...", mtime: 1234567890 } }
+// Supports plain string values from older versions for backwards compat.
+
+function readAnnotations(annotPath) {
+  if (!fs.existsSync(annotPath)) return {};
+  return JSON.parse(fs.readFileSync(annotPath, 'utf8'));
+}
+
+function getDocblock(entry) {
+  if (!entry) return null;
+  return typeof entry === 'string' ? entry : entry.docblock;
+}
+
+function needsAnnotation(filePath, entry) {
+  if (!entry) return true; // never annotated
+  try {
+    const mtime = fs.statSync(filePath).mtimeMs;
+    const stored = typeof entry === 'string' ? 0 : (entry.mtime || 0);
+    return mtime > stored; // file modified since last annotation
+  } catch {
+    return false;
+  }
+}
+
 // --- Main annotate logic ---
 
-async function annotateGraph(rootDir, graphDir, graph) {
+async function annotateGraph(rootDir, graphDir, graph, { silent = false } = {}) {
   const annotPath = path.join(graphDir, ANNOTATIONS_FILE);
-  const annotations = fs.existsSync(annotPath)
-    ? JSON.parse(fs.readFileSync(annotPath, 'utf8'))
-    : {};
+  const annotations = readAnnotations(annotPath);
 
-  const pending = graph.nodes.filter(
-    (n) => n.kind === 'file' && !n.docblock && !annotations[n.file]
-  );
+  const pending = graph.nodes.filter((n) => {
+    if (n.kind !== 'file' || n.docblock) return false;
+    const filePath = path.join(rootDir, n.file);
+    return needsAnnotation(filePath, annotations[n.file]);
+  });
 
-  if (!pending.length) {
-    process.stdout.write('  annotate: all files already annotated\n');
-    return annotations;
-  }
+  if (!pending.length) return annotations;
 
   const backend = await detectBackend();
   if (!backend) {
-    process.stderr.write('  annotate: no LLM backend found — set ANTHROPIC_API_KEY or start Ollama\n');
+    if (!silent) process.stderr.write('  annotate: no LLM backend — install claude CLI, set ANTHROPIC_API_KEY, or start Ollama\n');
     return annotations;
   }
 
-  process.stdout.write(`  annotate: ${pending.length} files → ${backend}\n`);
+  if (!silent) process.stdout.write(`  annotate: ${pending.length} file(s) → ${backend}\n`);
 
   for (const node of pending) {
     const filePath = path.join(rootDir, node.file);
@@ -143,10 +166,11 @@ async function annotateGraph(rootDir, graphDir, graph) {
     try {
       const raw = await callLLM(src, backend);
       const docblock = raw.split('\n')[0].replace(/^["']|["']$/g, '').slice(0, 120);
-      annotations[node.file] = docblock;
-      process.stdout.write(`    ${node.file}: ${docblock}\n`);
+      const mtime = fs.statSync(filePath).mtimeMs;
+      annotations[node.file] = { docblock, mtime };
+      if (!silent) process.stdout.write(`    ${node.file}: ${docblock}\n`);
     } catch (err) {
-      process.stdout.write(`    ${node.file}: skipped (${err.message})\n`);
+      if (!silent) process.stdout.write(`    ${node.file}: skipped (${err.message})\n`);
     }
   }
 
@@ -158,10 +182,11 @@ async function annotateGraph(rootDir, graphDir, graph) {
 function mergeAnnotations(nodes, graphDir) {
   const annotPath = path.join(graphDir, ANNOTATIONS_FILE);
   if (!fs.existsSync(annotPath)) return nodes;
-  const annotations = JSON.parse(fs.readFileSync(annotPath, 'utf8'));
+  const annotations = readAnnotations(annotPath);
   return nodes.map((n) => {
-    if (n.kind === 'file' && !n.docblock && annotations[n.file]) {
-      return { ...n, docblock: annotations[n.file] };
+    if (n.kind === 'file' && !n.docblock) {
+      const doc = getDocblock(annotations[n.file]);
+      if (doc) return { ...n, docblock: doc };
     }
     return n;
   });
