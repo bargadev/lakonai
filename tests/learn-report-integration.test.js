@@ -21,7 +21,7 @@ function runStop(transcriptPath, home) {
   return spawnSync('node', [STOP_HOOK], {
     input: JSON.stringify({ transcript_path: transcriptPath, session_id: 'integration-test' }),
     encoding: 'utf8',
-    env: { ...process.env, LAKON_HOME: home, LAKON_NO_UPDATE_CHECK: '1' },
+    env: { ...process.env, LAKON_HOME: home, LAKON_NO_UPDATE_CHECK: '1', LAKON_NO_AUTO_GRAPH: '1' },
   });
 }
 
@@ -29,7 +29,7 @@ function runSessionStart(home) {
   return spawnSync('node', [SESSION_START], {
     input: JSON.stringify({}),
     encoding: 'utf8',
-    env: { ...process.env, LAKON_HOME: home, LAKON_NO_UPDATE_CHECK: '1' },
+    env: { ...process.env, LAKON_HOME: home, LAKON_NO_UPDATE_CHECK: '1', LAKON_NO_AUTO_GRAPH: '1' },
   });
 }
 
