@@ -35,8 +35,14 @@ function dot(a, b) {
 }
 
 // Build the text to embed for a node.
+// Including param names dramatically improves semantic queries:
+//   "writeStats(stats, filePath)" → model connects "save ... to disk" correctly.
 function nodeText(n) {
-  return `${n.label} ${n.kind} ${n.file}`;
+  const base = `${n.label} ${n.kind} ${n.file}`;
+  const params = Array.isArray(n.params) && n.params.length
+    ? ` params ${n.params.join(' ')}`
+    : '';
+  return base + params;
 }
 
 // Generate embeddings for all nodes. Returns [{id, embedding: number[]}].
