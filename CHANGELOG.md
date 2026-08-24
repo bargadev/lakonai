@@ -6,6 +6,11 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-08-24
+
+### Fixed
+- README: corrected "zero LLM" claim — `graph build` auto-annotate uses Haiku once per undocumented file (mtime-cached).
+
 ## [1.0.1] - 2026-08-24
 
 ### Fixed
