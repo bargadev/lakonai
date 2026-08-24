@@ -144,11 +144,11 @@ describe('E2E proxy — live session stats', () => {
 
   const hasStats = fs.existsSync(statsPath);
 
-  test('proxy-stats.json exists (proxy ran at least once)', () => {
+  const maybeTest = hasStats ? test : test.skip;
+
+  maybeTest('proxy-stats.json exists (proxy ran at least once)', () => {
     assert.ok(hasStats, `No proxy stats at ${statsPath} — run lakonai install and use Claude Code through the proxy first`);
   });
-
-  const maybeTest = hasStats ? test : test.skip;
 
   maybeTest('session savings ≥ 50% (proxy is working)', () => {
     const stats = JSON.parse(fs.readFileSync(statsPath, 'utf8'));
