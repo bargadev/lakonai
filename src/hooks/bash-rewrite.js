@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
+// Intercepts Bash tool calls and rewrites or blocks dangerous shell commands before they run.
+
 const { supportedFirstWords } = require('../filters');
 
 const FILTERED_CMDS = supportedFirstWords();

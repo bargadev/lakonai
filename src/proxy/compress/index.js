@@ -1,5 +1,7 @@
 'use strict';
 
+// Strips comments, shrinks code/log/JSON/diff blocks, and reduces LLM context token usage.
+
 const { detect } = require('../detect');
 const log = require('./log');
 const diff = require('./diff');

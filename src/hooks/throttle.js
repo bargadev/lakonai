@@ -1,5 +1,7 @@
 'use strict';
 
+// Rate-limits hook events by tracking timestamps in marker files — prevents request floods.
+
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
