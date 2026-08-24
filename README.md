@@ -31,15 +31,30 @@
 
 ## Real savings, measured
 
-**CLI filters** — stripped before output reaches the model:
+Tested on a live React + TipTap + Yjs microfrontend (2,185 files, 9,571 AST nodes) using `lakonai@1.1.1`.
 
-| Command              | Raw tokens | Filtered  | Saved    |
-| -------------------- | ---------: | --------: | -------: |
-| `git log -p -10`     |     10,497 |        78 | **-94%** |
-| `ls -laR` (deep)     |     23,624 |       117 | **-94%** |
-| `npm test` (passing) |      4,451 |       358 | **-92%** |
-| `git diff HEAD~5`    |     13,230 |       798 | **-89%** |
-| `Read pnpm-lock.yaml`|    ~56,000 | **blocked**| **-95%** |
+**CLI filters** — output compressed before it reaches the model:
+
+| Command | Raw | Filtered | Saved |
+|---|---:|---:|---:|
+| `git log -20` | 17,097 tok | 450 tok | **−97%** |
+| `git diff HEAD~3` | 10,780 tok | 1,952 tok | **−82%** |
+| `git diff main…HEAD` ¹ | 1,513,910 tok | 2,331 tok | **−99.8%** |
+| `find src -type f` | 28,392 tok | 707 tok | **−97%** |
+| `ls -la` | 913 tok | 212 tok | **−77%** |
+
+¹ 182k-line diff — previously crashed with `ENOBUFS`. Fixed in 1.1.1.
+
+**Read-guard** — compact AST subgraph served instead of the raw file (9,571 nodes · 9,789 edges):
+
+| File | Raw | Subgraph | Saved |
+|---|---:|---:|---:|
+| `document-page.tsx` | 3,688 tok | 181 tok | **−95%** |
+| `editor-toolbar.tsx` | 701 tok | 117 tok | **−83%** |
+| `app.component.tsx` | 248 tok | 55 tok | **−78%** |
+| `index.tsx` | 95 tok | 48 tok | **−49%** |
+
+→ [Interactive benchmark](https://claude.ai/code/artifact/917fff51-cbed-4979-a555-9f13fa268f84)
 
 **Proxy compression** — what actually reaches the Anthropic API (real session, 49 requests):
 
@@ -49,7 +64,6 @@
 | Build log (80 lines)|       1,298 tok |        8 tok | **-99%** |
 | JSON API (120 users)|       2,386 tok |      104 tok | **-96%** |
 | Git diff            |      ~3,000 tok |  ~2,880 tok  |   **-4%**|
-| Source file read    |   via graph read-guard → **-87%**          |          |
 
 **Typical coding session:** ~53% savings from proxy alone, ~75% with graph read-guard.
 
