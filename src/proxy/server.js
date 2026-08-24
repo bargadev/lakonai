@@ -1,7 +1,5 @@
 'use strict';
 
-// HTTP/HTTPS proxy server that intercepts LLM tool calls, compresses output, and tracks token usage to disk.
-
 const http = require('http');
 const https = require('https');
 const fs = require('fs');
