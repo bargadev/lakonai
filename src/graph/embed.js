@@ -92,11 +92,16 @@ async function embedQuery(question) {
 // Score nodes by cosine similarity to a query embedding.
 // embeddingMap: Map<nodeId, number[]>
 // Returns [{node, score}] sorted desc, limited to topK.
+// Paths outside src/ are secondary artifacts — penalise so source files win ties.
+const NON_SOURCE_RE = /^(tests?|scripts?|bin|coverage|benchmark)\//;
+
 function scoreByEmbedding(nodes, embeddingMap, queryVec, topK) {
   return nodes
     .map((n) => {
       const vec = embeddingMap.get(n.id);
-      return { node: n, score: vec ? dot(vec, queryVec) : 0 };
+      const raw = vec ? dot(vec, queryVec) : 0;
+      const score = raw * (NON_SOURCE_RE.test(n.file || '') ? 0.5 : 1);
+      return { node: n, score };
     })
     .filter((x) => x.score > 0.2) // cosine threshold — avoids returning noise
     .sort((a, b) => b.score - a.score)
