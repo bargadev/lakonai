@@ -37,13 +37,16 @@ function dot(a, b) {
 // Build the text to embed for a node.
 // Including param names dramatically improves semantic queries:
 //   "writeStats(stats, filePath)" → model connects "save ... to disk" correctly.
+// Nomic requires "search_document: " prefix on corpus text; BGE needs none.
+const DOC_PREFIX = MODEL.includes('nomic') ? 'search_document: ' : '';
+
 function nodeText(n) {
   const base = `${n.label} ${n.kind} ${n.file}`;
   const params = Array.isArray(n.params) && n.params.length
     ? ` params ${n.params.join(' ')}`
     : '';
   const doc = n.docblock ? ` ${n.docblock}` : '';
-  return base + params + doc;
+  return DOC_PREFIX + base + params + doc;
 }
 
 // Generate embeddings for all nodes. Returns [{id, embedding: number[]}].
@@ -78,13 +81,20 @@ async function generateEmbeddings(nodes) {
 }
 
 // Embed a single query string. Returns number[].
+// BGE retrieval instruction — prepended to queries only (not to corpus).
+// Documented to improve asymmetric retrieval quality on BGE models.
+// Model-specific query prefix for asymmetric retrieval.
+const QUERY_PREFIX = MODEL.includes('nomic')
+  ? 'search_query: '
+  : 'Represent this sentence for searching relevant passages: ';
+
 async function embedQuery(question) {
   const xeno = await tryXenova();
   if (!xeno) throw new Error('@xenova/transformers not installed');
 
   const { pipeline } = xeno;
   const embedder = await pipeline('feature-extraction', MODEL, { quantized: true });
-  const out = await embedder([question], { pooling: 'mean', normalize: true });
+  const out = await embedder([QUERY_PREFIX + question], { pooling: 'mean', normalize: true });
   embedder.dispose();
   return Array.from(out.data);
 }
