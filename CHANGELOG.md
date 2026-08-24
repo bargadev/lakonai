@@ -6,6 +6,16 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-08-24
+
+### Added
+- **Semantic graph query** (restored from orphaned branches #17–#21) — BGE-small-en-v1.5 embeddings, hybrid BM25 + RRF fusion, source boost, docblock/param indexing, auto-annotate via `claude --print`. Benchmark: 19/30 BM25-only → 29/30 hybrid.
+- **`lakonai graph annotate`** — LLM-generated one-line docblocks stored in `lakonai-graph/annotations.json`; source files never modified; mtime-based cache.
+- **30-query benchmark** (`scripts/benchmark-query.js`) — 15 literal + 15 semantic.
+
+### Changed
+- README: real-world benchmarks from live projects (React+TipTap 182k-line diff −99.8%, WhatsApp SDK `WAProto/index.js` 293k tok → 13 tok −100%).
+
 ## [1.1.1] - 2026-08-24
 
 ### Fixed
