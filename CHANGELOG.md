@@ -6,6 +6,11 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-08-24
+
+### Fixed
+- CI tests for `session-start` and `learn-report-integration` now pass `LAKON_NO_AUTO_GRAPH=1` to suppress the auto-build notice in environments without a real project context.
+
 ## [1.1.0] - 2026-08-24
 
 ### Added
