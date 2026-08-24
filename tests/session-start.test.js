@@ -16,7 +16,7 @@ function runHook(input, home, extraEnv = {}) {
   return spawnSync('node', [HOOK], {
     input: JSON.stringify(input),
     encoding: 'utf8',
-    env: { ...process.env, LAKON_HOME: home, ...extraEnv },
+    env: { ...process.env, LAKON_HOME: home, LAKON_NO_AUTO_GRAPH: '1', ...extraEnv },
   });
 }
 

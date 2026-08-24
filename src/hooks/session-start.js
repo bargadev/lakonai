@@ -61,16 +61,18 @@ async function main() {
     } catch { /* best-effort */ }
 
     // Auto-build graph for new git projects that don't have one yet.
-    try {
-      const gitRoot = findGitRoot(process.cwd());
-      if (gitRoot) {
-        const graphJson = path.join(gitRoot, 'lakonai-graph', 'graph.json');
-        if (!fs.existsSync(graphJson)) {
-          const notice = triggerGraphBuild(gitRoot);
-          if (notice) parts.push(notice);
+    if (!process.env.LAKON_NO_AUTO_GRAPH) {
+      try {
+        const gitRoot = findGitRoot(process.cwd());
+        if (gitRoot) {
+          const graphJson = path.join(gitRoot, 'lakonai-graph', 'graph.json');
+          if (!fs.existsSync(graphJson)) {
+            const notice = triggerGraphBuild(gitRoot);
+            if (notice) parts.push(notice);
+          }
         }
-      }
-    } catch { /* best-effort */ }
+      } catch { /* best-effort */ }
+    }
 
     if (!parts.length) process.exit(0);
 
