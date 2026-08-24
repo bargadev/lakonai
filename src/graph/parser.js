@@ -56,6 +56,63 @@ function resolveImport(specifier, fromFile, rootDir) {
   return path.relative(rootDir, resolved);
 }
 
+// Extract the leading docblock from source — consecutive // lines or /* */ block at top.
+// Skips shebang, 'use strict', and blank lines. Returns plain text, max 250 chars, or ''.
+function extractDocblock(src) {
+  const lines = src.split('\n');
+  const fragments = [];
+  let inBlock = false;
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) continue;
+    if (line.startsWith('#!') || line === "'use strict';" || line === '"use strict";') continue;
+
+    if (!inBlock && line.startsWith('/*')) {
+      inBlock = true;
+      const inner = line.replace(/^\/\*+/, '').replace(/\*+\/$/, '').trim();
+      if (inner) fragments.push(inner);
+      if (line.includes('*/')) break; // single-line block
+      continue;
+    }
+    if (inBlock) {
+      if (line.includes('*/')) break;
+      fragments.push(line.replace(/^\*\s?/, '').trim());
+      continue;
+    }
+    if (line.startsWith('//')) {
+      fragments.push(line.replace(/^\/\/\s?/, '').trim());
+      continue;
+    }
+    if (line.startsWith('#')) {
+      fragments.push(line.replace(/^#\s?/, '').trim());
+      continue;
+    }
+    break; // non-comment line — stop
+  }
+
+  const text = fragments.filter(Boolean).join(' ').trim();
+  return text.length > 250 ? text.slice(0, 247) + '…' : text;
+}
+
+// Extract parameter names from a raw param string, stripping types/defaults/destructuring.
+// "stats, filePath" → ["stats", "filePath"]
+// "{ topK = 10 } = {}" → ["topK"]
+// "a: number, b = 0" → ["a", "b"]
+function parseParams(raw) {
+  if (!raw || !raw.trim()) return [];
+  return raw
+    .split(',')
+    .map((p) => p.trim()
+      .replace(/[{}\[\]]/g, '')   // strip destructure brackets
+      .replace(/\s*=.*$/, '')     // strip default values
+      .replace(/\s*:\s*\S+/, '')  // strip TypeScript type annotations
+      .replace(/\.\.\./g, '')     // strip rest operator
+      .trim()
+    )
+    .filter((p) => p && /^[A-Za-z_$]/.test(p));
+}
+
 // --- JS/TS parser ---
 function parseJS(src, relPath, rootDir) {
   const stripped = stripStrings(src);
@@ -65,7 +122,8 @@ function parseJS(src, relPath, rootDir) {
   const fileId = relPath;
 
   // File node
-  nodes.push({ id: fileId, label: path.basename(relPath), kind: 'file', file: relPath, line: 0 });
+  const docblock = extractDocblock(src);
+  nodes.push({ id: fileId, label: path.basename(relPath), kind: 'file', file: relPath, line: 0, docblock });
 
   // ES imports: import X from 'y' / import { X } from 'y' / import 'y'
   // Run on original src — import paths are not inside strings/comments
@@ -83,24 +141,26 @@ function parseJS(src, relPath, rootDir) {
     if (target) edges.push({ from: fileId, to: target, rel: 'imports', tag: 'EXTRACTED' });
   }
 
-  // Function declarations: function name( / async function name(
-  const funcRe = /^(?:export\s+)?(?:async\s+)?function\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/gm;
+  // Function declarations: function name(params) / async function name(params)
+  const funcRe = /^(?:export\s+)?(?:async\s+)?function\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(([^)]*)\)/gm;
   while ((m = funcRe.exec(src)) !== null) {
     const name = m[1];
+    const params = parseParams(m[2]);
     const line = src.slice(0, m.index).split('\n').length;
     const id = nodeId(name);
-    nodes.push({ id, label: name, kind: 'function', file: relPath, line });
+    nodes.push({ id, label: name, kind: 'function', file: relPath, line, params });
     edges.push({ from: fileId, to: id, rel: 'contains', tag: 'EXTRACTED' });
   }
 
-  // Arrow function / const assignments: const name = (...) => / const name = function
-  const arrowRe = /^(?:export\s+)?(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*(?:async\s+)?(?:\([^)]*\)\s*=>|function\s*\()/gm;
+  // Arrow / const assignments: const name = (params) => / const name = function(
+  const arrowRe = /^(?:export\s+)?(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*(?:async\s+)?(?:\(([^)]*)\)\s*=>|function\s*\(([^)]*)\))/gm;
   while ((m = arrowRe.exec(src)) !== null) {
     const name = m[1];
+    const params = parseParams(m[2] || m[3] || '');
     const line = src.slice(0, m.index).split('\n').length;
     const id = nodeId(name);
     if (!nodes.find((n) => n.id === id)) {
-      nodes.push({ id, label: name, kind: 'function', file: relPath, line });
+      nodes.push({ id, label: name, kind: 'function', file: relPath, line, params });
       edges.push({ from: fileId, to: id, rel: 'contains', tag: 'EXTRACTED' });
     }
   }
@@ -127,7 +187,8 @@ function parsePython(src, relPath, rootDir) {
   const fileId = relPath;
   const nodeId = (sym) => `${relPath}#${sym}`;
 
-  nodes.push({ id: fileId, label: path.basename(relPath), kind: 'file', file: relPath, line: 0 });
+  const docblock = extractDocblock(src);
+  nodes.push({ id: fileId, label: path.basename(relPath), kind: 'file', file: relPath, line: 0, docblock });
 
   // from x import y / import x
   const fromImportRe = /^from\s+([\w.]+)\s+import/gm;
@@ -146,13 +207,14 @@ function parsePython(src, relPath, rootDir) {
     }
   }
 
-  // def name(
-  const defRe = /^(?:    )*def\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(/gm;
+  // def name(params):
+  const defRe = /^(?:    )*def\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)/gm;
   while ((m = defRe.exec(src)) !== null) {
     const name = m[1];
+    const params = parseParams(m[2]);
     const line = src.slice(0, m.index).split('\n').length;
     const id = nodeId(name);
-    nodes.push({ id, label: name, kind: 'function', file: relPath, line });
+    nodes.push({ id, label: name, kind: 'function', file: relPath, line, params });
     edges.push({ from: fileId, to: id, rel: 'contains', tag: 'EXTRACTED' });
   }
 
@@ -180,16 +242,18 @@ function parseGo(src, relPath, _rootDir) {
   const fileId = relPath;
   const nodeId = (sym) => `${relPath}#${sym}`;
 
-  nodes.push({ id: fileId, label: path.basename(relPath), kind: 'file', file: relPath, line: 0 });
+  const docblock = extractDocblock(src);
+  nodes.push({ id: fileId, label: path.basename(relPath), kind: 'file', file: relPath, line: 0, docblock });
 
-  // func Name( / func (r *Type) Name(
-  const funcRe = /^func\s+(?:\([^)]+\)\s+)?([A-Z][A-Za-z0-9_]*)\s*\(/gm;
+  // func Name(params) / func (r *Type) Name(params)
+  const funcRe = /^func\s+(?:\([^)]+\)\s+)?([A-Z][A-Za-z0-9_]*)\s*\(([^)]*)\)/gm;
   let m;
   while ((m = funcRe.exec(src)) !== null) {
     const name = m[1];
+    const params = parseParams(m[2]);
     const line = src.slice(0, m.index).split('\n').length;
     const id = nodeId(name);
-    nodes.push({ id, label: name, kind: 'function', file: relPath, line });
+    nodes.push({ id, label: name, kind: 'function', file: relPath, line, params });
     edges.push({ from: fileId, to: id, rel: 'contains', tag: 'EXTRACTED' });
   }
 
@@ -213,7 +277,8 @@ function parseRust(src, relPath, _rootDir) {
   const fileId = relPath;
   const nodeId = (sym) => `${relPath}#${sym}`;
 
-  nodes.push({ id: fileId, label: path.basename(relPath), kind: 'file', file: relPath, line: 0 });
+  const docblock = extractDocblock(src);
+  nodes.push({ id: fileId, label: path.basename(relPath), kind: 'file', file: relPath, line: 0, docblock });
 
   // pub fn name / fn name / async fn name
   const fnRe = /^(?:pub\s+)?(?:async\s+)?fn\s+([a-z_][a-z0-9_]*)\s*[<(]/gm;

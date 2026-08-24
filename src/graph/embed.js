@@ -35,8 +35,18 @@ function dot(a, b) {
 }
 
 // Build the text to embed for a node.
+// Including param names dramatically improves semantic queries:
+//   "writeStats(stats, filePath)" → model connects "save ... to disk" correctly.
+// Nomic requires "search_document: " prefix on corpus text; BGE needs none.
+const DOC_PREFIX = MODEL.includes('nomic') ? 'search_document: ' : '';
+
 function nodeText(n) {
-  return `${n.label} ${n.kind} ${n.file}`;
+  const base = `${n.label} ${n.kind} ${n.file}`;
+  const params = Array.isArray(n.params) && n.params.length
+    ? ` params ${n.params.join(' ')}`
+    : '';
+  const doc = n.docblock ? ` ${n.docblock}` : '';
+  return DOC_PREFIX + base + params + doc;
 }
 
 // Generate embeddings for all nodes. Returns [{id, embedding: number[]}].
@@ -71,13 +81,20 @@ async function generateEmbeddings(nodes) {
 }
 
 // Embed a single query string. Returns number[].
+// BGE retrieval instruction — prepended to queries only (not to corpus).
+// Documented to improve asymmetric retrieval quality on BGE models.
+// Model-specific query prefix for asymmetric retrieval.
+const QUERY_PREFIX = MODEL.includes('nomic')
+  ? 'search_query: '
+  : 'Represent this sentence for searching relevant passages: ';
+
 async function embedQuery(question) {
   const xeno = await tryXenova();
   if (!xeno) throw new Error('@xenova/transformers not installed');
 
   const { pipeline } = xeno;
   const embedder = await pipeline('feature-extraction', MODEL, { quantized: true });
-  const out = await embedder([question], { pooling: 'mean', normalize: true });
+  const out = await embedder([QUERY_PREFIX + question], { pooling: 'mean', normalize: true });
   embedder.dispose();
   return Array.from(out.data);
 }
@@ -85,11 +102,16 @@ async function embedQuery(question) {
 // Score nodes by cosine similarity to a query embedding.
 // embeddingMap: Map<nodeId, number[]>
 // Returns [{node, score}] sorted desc, limited to topK.
+// Paths outside src/ are secondary artifacts — penalise so source files win ties.
+const NON_SOURCE_RE = /^(tests?|scripts?|bin|coverage|benchmark)\//;
+
 function scoreByEmbedding(nodes, embeddingMap, queryVec, topK) {
   return nodes
     .map((n) => {
       const vec = embeddingMap.get(n.id);
-      return { node: n, score: vec ? dot(vec, queryVec) : 0 };
+      const raw = vec ? dot(vec, queryVec) : 0;
+      const score = raw * (NON_SOURCE_RE.test(n.file || '') ? 0.5 : 1);
+      return { node: n, score };
     })
     .filter((x) => x.score > 0.2) // cosine threshold — avoids returning noise
     .sort((a, b) => b.score - a.score)
