@@ -16,13 +16,24 @@ async function readStdin() {
 async function main() {
   try {
     await readStdin();
+
+    const parts = [];
+
     const update = await checkForUpdate();
-    if (!update) process.exit(0);
+    if (update) parts.push(formatNotice(update));
+
+    try {
+      const learnReport = require('../learn-report');
+      const summary = learnReport.maybeGetUnseen();
+      if (summary) parts.push(`lakonai learn: ${summary}`);
+    } catch { /* best-effort */ }
+
+    if (!parts.length) process.exit(0);
 
     const response = {
       hookSpecificOutput: {
         hookEventName: 'SessionStart',
-        additionalContext: formatNotice(update),
+        additionalContext: parts.join('\n\n'),
       },
     };
     process.stdout.write(JSON.stringify(response));

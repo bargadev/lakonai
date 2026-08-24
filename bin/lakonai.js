@@ -396,6 +396,27 @@ async function maybeOfferUpdate() {
   }
 }
 
+function runPixel(args) {
+  const pixel = require('../src/pixel/convert');
+  const dryRun = args.includes('--dry-run');
+  const revert = args.includes('--revert');
+  const agentIdx = args.indexOf('--agent');
+  const agent = agentIdx >= 0 ? args[agentIdx + 1] : null;
+
+  if (dryRun) {
+    const results = pixel.dryRun({ agent });
+    process.stdout.write(pixel.formatDryRun(results));
+    return;
+  }
+  if (revert) {
+    const results = pixel.revertAll({ agent });
+    process.stdout.write(pixel.formatRevert(results));
+    return;
+  }
+  const results = pixel.convert({ agent });
+  process.stdout.write(pixel.formatConvert(results));
+}
+
 async function main() {
   const argv = process.argv.slice(2);
   if (!argv.length || argv[0] === '--help' || argv[0] === '-h') {
@@ -470,6 +491,14 @@ async function main() {
   /* istanbul ignore next -- long-running stdio MCP proxy; logic tested via src/mcp-shrink */
   if (first === '__mcp') {
     require('../src/mcp-shrink').runProxy(rest);
+    return;
+  }
+  if (first === 'graph') {
+    require('../src/graph').runGraph(rest);
+    return;
+  }
+  if (first === 'pixel') {
+    runPixel(rest);
     return;
   }
 

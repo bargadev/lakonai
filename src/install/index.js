@@ -82,6 +82,14 @@ async function install({ only, here = false, upgraded = false } = {}) {
     }
   }
 
+  // Start proxy daemon and wire ANTHROPIC_BASE_URL into shell rc — silently.
+  /* istanbul ignore next -- daemon I/O; tested via proxy-daemon.test.js */
+  try {
+    const daemon = require('../proxy/daemon');
+    daemon.start();
+    for (const rc of daemon.rcFiles()) daemon.installEnv(rc);
+  } catch { /* best-effort; never block install */ }
+
   process.stdout.write('\n');
   // Upgrade is a refresh, not a first install - keep the output short, skip the
   // getting-started tips a fresh install shows.
