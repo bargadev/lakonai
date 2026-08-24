@@ -9,6 +9,7 @@ const { buildReport } = require('./report');
 const { buildHtml } = require('./html');
 const { explain, shortestPath, nlQuery, nlQuerySemantic, nlQueryHybrid, formatExplain, formatPath, formatNlQuery } = require('./query');
 const { hasXenova, generateEmbeddings, embedQuery } = require('./embed');
+const { annotateGraph, mergeAnnotations } = require('./annotate');
 const { watchDir } = require('./watch');
 
 const REPORT_FILE = 'GRAPH_REPORT.md';
@@ -45,7 +46,8 @@ async function build(rootDir) {
 
   if (hasXenova()) {
     try {
-      const embeddings = await generateEmbeddings(graph.nodes);
+      const enrichedNodes = mergeAnnotations(graph.nodes, dir);
+      const embeddings = await generateEmbeddings(enrichedNodes);
       fs.writeFileSync(path.join(dir, EMBEDDINGS_FILE), JSON.stringify(embeddings));
       graph._embeddingsGenerated = true;
     } catch {
@@ -101,6 +103,26 @@ function runGraph(args) {
         process.stdout.write(`  embeddings: ${graph.meta.nodeCount} vectors written (semantic query enabled)\n    ${EMBEDDINGS_FILE} — semantic embeddings\n`);
       }).catch(() => { /* best-effort */ });
     }
+    return;
+  }
+
+  if (sub === 'annotate') {
+    const rootDir = rest[0] || '.';
+    const absRoot = path.resolve(rootDir);
+    const graph = readGraph(rootDir);
+    if (!graph) { process.stderr.write('no graph.json found — run: lakonai graph build\n'); process.exitCode = 1; return; }
+    const dir = graphDir(absRoot);
+    annotateGraph(absRoot, dir, graph).then((annotations) => {
+      const count = Object.keys(annotations).length;
+      process.stdout.write(`  annotate: ${count} docblocks stored → ${path.join(dir, 'annotations.json')}\n`);
+      if (!hasXenova()) return;
+      process.stdout.write('  embeddings: regenerating with annotations…\n');
+      const enriched = mergeAnnotations(graph.nodes, dir);
+      return generateEmbeddings(enriched).then((embs) => {
+        fs.writeFileSync(path.join(dir, EMBEDDINGS_FILE), JSON.stringify(embs));
+        process.stdout.write(`  embeddings: ${embs.length} vectors updated\n`);
+      });
+    }).catch((err) => { process.stderr.write(`annotate error: ${err.message}\n`); process.exitCode = 1; });
     return;
   }
 

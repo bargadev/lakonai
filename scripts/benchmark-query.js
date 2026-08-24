@@ -10,6 +10,7 @@ const path = require('path');
 const { buildSync } = require('../src/graph/index');
 const { nlQuery, nlQuerySemantic, nlQueryHybrid } = require('../src/graph/query');
 const { hasXenova, embedQuery } = require('../src/graph/embed');
+const { mergeAnnotations } = require('../src/graph/annotate');
 
 const ROOT = path.resolve(__dirname, '..');
 const GRAPH_DIR = path.join(ROOT, 'lakonai-graph');
@@ -70,7 +71,8 @@ async function run() {
     if (!fs.existsSync(EMB_PATH)) {
       console.log('semantic: generating embeddings (first run downloads ~23MB model)…');
       const { generateEmbeddings } = require('../src/graph/embed');
-      const embs = await generateEmbeddings(graph.nodes);
+      const enriched = mergeAnnotations(graph.nodes, GRAPH_DIR);
+      const embs = await generateEmbeddings(enriched);
       fs.mkdirSync(GRAPH_DIR, { recursive: true });
       fs.writeFileSync(EMB_PATH, JSON.stringify(embs));
       console.log(`  saved: ${embs.length} vectors → ${EMB_PATH}\n`);
