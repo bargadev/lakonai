@@ -6,6 +6,11 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-08-24
+
+### Fixed
+- CI publish no longer fails due to `proxy-stats.json` assertion running unconditionally in environments where the proxy has never been started.
+
 ## [1.0.0] - 2026-08-24
 
 ### Added
