@@ -6,6 +6,16 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-08-24
+
+### Added
+- **Semantic graph query** — hybrid BM25 + vector search powered by BGE-small-en-v1.5 (~23 MB, fully local via `@xenova/transformers`). Install the optional dep and rebuild to unlock. Benchmark: 19/30 BM25-only → 29/30 hybrid on the lakonai codebase.
+- **`lakonai graph annotate`** — generates search-optimised one-line docblocks for undocumented files via `claude --print` (zero config for Claude Code users), `ANTHROPIC_API_KEY`, or Ollama. Stored in `lakonai-graph/annotations.json`; source files are never modified.
+- **Auto-annotate on build** — `lakonai graph build` automatically annotates new and modified files (mtime-based cache) before generating embeddings. Only changed files incur LLM calls.
+- **Function param indexing** — function parameter names are included in the embedding text for richer semantic retrieval.
+- **Source boost** — non-source nodes (tests, scripts, bin) are penalised 0.5× in semantic ranking to surface production code first.
+- **RRF hybrid fusion** — asymmetric Reciprocal Rank Fusion (k_sem=60, k_bm25=300) combines BM25 and semantic results; BM25 capped at top-10 to suppress noise.
+
 ## [0.17.1] - 2026-07-16
 
 ### Fixed
