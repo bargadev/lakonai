@@ -140,8 +140,14 @@ function runAndFilter(cmd, args) {
   // binary, not the lakonai shim that may have invoked us (prevents recursion).
   const { pathWithoutShim } = require('../src/install/shim');
   const env = { ...process.env, PATH: pathWithoutShim(process.env) };
-  const child = spawnSync(cmd, args, { encoding: 'utf8', stdio, env });
+  const child = spawnSync(cmd, args, { encoding: 'utf8', stdio, env, maxBuffer: 200 * 1024 * 1024 });
   if (child.error) {
+    /* istanbul ignore next -- requires >200 MB output to trigger; not unit-testable */
+    if (child.error.code === 'ENOBUFS') {
+      // Output exceeded maxBuffer — pass through raw so nothing is lost.
+      const fallback = spawnSync(cmd, args, { stdio: 'inherit', env });
+      process.exit(fallback.status ?? 0);
+    }
     process.stderr.write(`lakonai: ${child.error.message}\n`);
     process.exit(127);
   }
