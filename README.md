@@ -99,7 +99,7 @@ lakonai ls -la         # → files without noise
 
 ### Layer 2 — Graph read-guard (Claude Code)
 
-`lakonai graph build` parses your codebase into an AST knowledge graph — zero LLM, pure regex, works in under a second for most projects. When Claude Code reads a source file, the read-guard intercepts and returns a compact subgraph (symbols, edges, community) instead of the full text.
+`lakonai graph build` parses your codebase into an AST knowledge graph — pure AST, works in under a second for most projects. When Claude Code reads a source file, the read-guard intercepts and returns a compact subgraph (symbols, edges, community) instead of the full text. Semantic search optionally calls an LLM once per file to generate docblocks (cached; see below).
 
 ```
 102 files → 512 nodes → 573 edges   built in <0.1s
