@@ -83,6 +83,19 @@ function entryHasHook(entry, basename) {
   return entry.hooks.some((h) => h && typeof h.command === 'string' && h.command.includes(basename));
 }
 
+// Build the hook command string for settings.json.
+// On Windows, Claude Code executes "command" hooks through bash (Git Bash),
+// which strips backslashes ("C:\Users\...\x.js" -> "C:Users...x.js" -> command
+// not found) and cannot exec a .js by path. Use `node` with a forward-slash
+// path, which works in bash and node accepts on Windows. On POSIX the executable
+// hook file (shebang + chmod 0755) runs directly.
+function hookCommand(dest) {
+  if (process.platform === 'win32') {
+    return `node "${dest.split(path.sep).join('/')}"`;
+  }
+  return dest;
+}
+
 function mergeHook(data, hookDef, dest) {
   /* istanbul ignore next */
   const eventKey = hookDef.event || 'PreToolUse';
@@ -95,12 +108,12 @@ function mergeHook(data, hookDef, dest) {
       if (!entryHasHook(existing, hookDef.basename)) {
         /* istanbul ignore next */
         existing.hooks = existing.hooks || [];
-        existing.hooks.push({ type: 'command', command: dest });
+        existing.hooks.push({ type: 'command', command: hookCommand(dest) });
       }
     } else {
       data.hooks[eventKey].push({
         matcher: hookDef.matcher,
-        hooks: [{ type: 'command', command: dest }],
+        hooks: [{ type: 'command', command: hookCommand(dest) }],
       });
     }
   } else {
@@ -109,7 +122,7 @@ function mergeHook(data, hookDef, dest) {
     );
     if (!existing) {
       data.hooks[eventKey].push({
-        hooks: [{ type: 'command', command: dest }],
+        hooks: [{ type: 'command', command: hookCommand(dest) }],
       });
     }
   }

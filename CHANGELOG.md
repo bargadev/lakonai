@@ -6,6 +6,11 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-08-26
+
+### Fixed
+- **Windows: hooks never ran** (`command not found`). Claude Code executes `"type": "command"` hooks through bash (Git Bash) on Windows, which strips the backslashes in a native path (`C:\Users\…\lakon-stop-hook.js` → `C:Users…lakon-stop-hook.js`) and cannot exec a `.js` by path. The installer now emits `node "<forward-slash-path>"` on win32 (POSIX unchanged — the executable hook file runs directly via its shebang). Without this, every hook silently failed, so auto-filtering never applied and only explicit `lakonai <cmd>` invocations were compressed.
+
 ## [1.2.0] - 2026-08-24
 
 ### Added
