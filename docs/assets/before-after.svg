@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="470" viewBox="0 0 880 470" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+  <!-- card -->
+  <rect x="0" y="0" width="880" height="470" rx="14" fill="#0d1117"/>
+  <rect x="0.5" y="0.5" width="879" height="469" rx="14" fill="none" stroke="#30363d"/>
+
+  <!-- title -->
+  <text x="28" y="42" fill="#e6edf3" font-size="20" font-weight="700">lakonai</text>
+  <text x="118" y="42" fill="#7d8590" font-size="15">git diff main…HEAD — filtrado antes de chegar no LLM</text>
+
+  <!-- ANTES panel -->
+  <rect x="28" y="66" width="380" height="330" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="48" y="98" fill="#7d8590" font-size="13" letter-spacing="1">ANTES · git diff (raw)</text>
+  <text x="48" y="132" fill="#f85149" font-size="34" font-weight="800">1.513.910</text>
+  <text x="48" y="156" fill="#7d8590" font-size="14">tokens · diff de 182k linhas</text>
+
+  <!-- fake raw diff lines (illustrative) -->
+  <g font-size="12.5">
+    <text x="48" y="196" fill="#7d8590">diff --git a/src/editor/index.tsx …</text>
+    <text x="48" y="216" fill="#7d8590">@@ -1,204 +1,231 @@</text>
+    <text x="48" y="236" fill="#3fb950">+ import { createEditor } from "./core";</text>
+    <text x="48" y="256" fill="#f85149">- const doc = require("./old-doc");</text>
+    <text x="48" y="276" fill="#3fb950">+ export function mount(opts = {}) {</text>
+    <text x="48" y="296" fill="#7d8590">    const plugins = registerPlugins();</text>
+    <text x="48" y="316" fill="#3fb950">+   return editor.apply(state, plugins);</text>
+    <text x="48" y="340" fill="#7d8590">  … +181.900 linhas, 2.185 arquivos …</text>
+  </g>
+  <text x="48" y="374" fill="#f0883e" font-size="12">antes travava com ENOBUFS · vai inteiro pro contexto</text>
+
+  <!-- badge -->
+  <g>
+    <circle cx="440" cy="231" r="54" fill="#0d1117" stroke="#238636" stroke-width="2"/>
+    <text x="440" y="226" fill="#3fb950" font-size="23" font-weight="800" text-anchor="middle">−99,8%</text>
+    <text x="440" y="248" fill="#7d8590" font-size="11" text-anchor="middle">tokens</text>
+  </g>
+
+  <!-- DEPOIS panel -->
+  <rect x="472" y="66" width="380" height="330" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="492" y="98" fill="#7d8590" font-size="13" letter-spacing="1">DEPOIS · lakonai git diff</text>
+  <text x="492" y="132" fill="#3fb950" font-size="34" font-weight="800">2.331</text>
+  <text x="560" y="156" fill="#7d8590" font-size="14">tokens</text>
+
+  <g font-size="12.5">
+    <text x="492" y="196" fill="#e6edf3">2.185 arquivos alterados</text>
+    <text x="492" y="220" fill="#7d8590">src/editor/    ~core, mount(), plugins</text>
+    <text x="492" y="242" fill="#7d8590">src/collab/    +yjs  ~awareness</text>
+    <text x="492" y="264" fill="#7d8590">src/tiptap/    ~schema  +12 nodes</text>
+    <text x="492" y="300" fill="#8b949e">estrutura e identificadores intactos,</text>
+    <text x="492" y="318" fill="#8b949e">ruído removido</text>
+  </g>
+  <text x="492" y="374" fill="#3fb950" font-size="12">o modelo lê isto — e entende igual</text>
+
+  <!-- footer -->
+  <text x="28" y="438" fill="#7d8590" font-size="13">medido em lakonai@1.1.1 · React + TipTap + Yjs</text>
+  <text x="852" y="438" fill="#7d8590" font-size="13" text-anchor="end">github.com/bargadev/lakonai · 751 testes</text>
+</svg>

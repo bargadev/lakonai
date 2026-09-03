@@ -7,18 +7,26 @@
 <h3 align="center">Speak less. Ship more.</h3>
 
 <p align="center">
-  <strong>Cut LLM tokens by up to 94% — without losing a single identifier.</strong>
+  <strong>Cut LLM tokens by up to 99.8% — without losing a single identifier.</strong><br/>
+  <sub>A 182k-line <code>git diff</code> went <strong>1,513,910 → 2,331 tokens</strong>. Measured, not rounded.</sub>
 </p>
 
 <p align="center"><em>Spartan replies for AI agents.</em></p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/lakonai"><img src="https://img.shields.io/npm/v/lakonai?color=0F0F0F&label=npm" alt="npm" /></a>
+  <a href="https://github.com/bargadev/lakonai"><img src="https://img.shields.io/badge/GitHub-bargadev%2Flakonai-0F0F0F?logo=github" alt="GitHub repo" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-0F0F0F" alt="MIT" /></a>
   <img src="https://img.shields.io/badge/node-%E2%89%A518-0F0F0F" alt="node ≥18" />
   <img src="https://img.shields.io/badge/deps-0-0F0F0F" alt="zero dependencies" />
   <img src="https://img.shields.io/badge/agents-6-0F0F0F" alt="6 AI agents" />
-  <img src="https://img.shields.io/badge/tests-725-0F0F0F" alt="725 tests" />
+  <img src="https://img.shields.io/badge/tests-751-0F0F0F" alt="751 tests" />
+</p>
+
+<p align="center">
+  <a href="https://github.com/bargadev/lakonai">
+    <img src="./docs/assets/before-after.svg" width="820" alt="lakonai: a 182k-line git diff main…HEAD went 1,513,910 → 2,331 tokens (−99.8%), structure and identifiers intact" />
+  </a>
 </p>
 
 <p align="center">
@@ -286,14 +294,14 @@ Input is measured and deterministic. Output is estimated by your local AI CLI (n
 
 ## Test suite
 
-725 tests across 47 suites — all passing, no mocks on I/O boundaries.
+751 tests across 48 suites — all passing, no mocks on I/O boundaries.
 
 | Type | Suites | Tests |
 |------|--------|-------|
-| Unit | 13 | 183 |
-| Integration (module + real FS) | 31 | 489 |
-| E2E / CLI (spawn + real process) | 3 | 53 |
-| **Total** | **47** | **725** |
+| Unit | 13 | 170 |
+| Integration (module + real FS) | 33 | 530 |
+| E2E / CLI (spawn + real process) | 2 | 51 |
+| **Total** | **48** | **751** |
 
 Coverage: **95% statements · 89% branches · 97% functions**
 
@@ -311,12 +319,17 @@ Your AI agent isn't laconic. It opens with _"Sure! I'd be happy to help…"_, re
 
 ## Credits
 
-Built on ideas from three projects:
+lakonai is an original, zero-dependency tool written from scratch. Several of its
+layers were **inspired by** prior art — none of it is vendored or forked, and the
+compression engine, auto-learning, read-guard, overflow sandbox, and BM25 graph
+query are lakonai's own:
 
-- [**caveman**](https://github.com/juliusbrussee/caveman) (MIT) — terse rule, auto-clarity, proxy compression, pixel mode
-- [**graphify**](https://github.com/Bklieger/graphify) — AST knowledge graph, Leiden community detection, force-directed viz, NL query (reimplemented in Node.js; BM25 replaces LLM query)
-- [**rtk**](https://github.com/rtk-ai/rtk) — CLI output filtering approach, extended with auto-learning and 30+ built-in filters
+- [**caveman**](https://github.com/juliusbrussee/caveman) (MIT) — inspired the terse-response rule, auto-clarity, and pixel skill mode
+- [**graphify**](https://github.com/Bklieger/graphify) — inspired the AST knowledge graph and community detection; lakonai reimplements it in Node.js and drops the LLM at query time for zero-cost BM25
+- [**rtk**](https://github.com/rtk-ai/rtk) — inspired the CLI-filtering approach; lakonai goes further with auto-learning and 30+ built-in filters
 
-Condensed into one zero-dependency npm package with automatic install, savings tracking, and four layers of compression.
+Where an idea carries a license (caveman is MIT), credit stays. Everything else —
+the declarative filter engine, the hook dispatch, savings tracking, and the four
+layers of compression — is built here.
 
 MIT — see [LICENSE](LICENSE).

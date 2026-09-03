@@ -6,6 +6,16 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-09-02
+
+### Changed
+- **README (npm-facing):** embedded a self-contained before/after SVG at the top
+  showing the real `git diff main…HEAD` measurement (1,513,910 → 2,331 tokens,
+  −99.8%); replaced the "up to 94%" hero with the measured 99.8% number; added an
+  explicit GitHub link to the first fold; reframed the Credits section so lakonai
+  reads as an original zero-dependency tool (prior art credited as inspiration,
+  not vendored/forked). Corrected the stale test counts (725/47 → 751/48).
+
 ## [1.2.1] - 2026-08-26
 
 ### Fixed
