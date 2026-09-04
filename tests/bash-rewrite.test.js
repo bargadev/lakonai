@@ -64,6 +64,29 @@ test('ignores empty / whitespace command', () => {
   assert.equal(run({ tool_name: 'Bash', tool_input: { command: '' } }), '');
 });
 
+test('auto-allows read-only subcommands of gated commands', () => {
+  for (const cmd of ['git status', 'git log --oneline', 'docker ps', 'kubectl get pods', 'aws ec2 describe-instances', 'aws s3 ls']) {
+    const out = run({ tool_name: 'Bash', tool_input: { command: cmd } });
+    const parsed = JSON.parse(out);
+    assert.equal(parsed.hookSpecificOutput.permissionDecision, 'allow');
+    assert.equal(parsed.hookSpecificOutput.updatedInput.command, `lakonai ${cmd}`);
+  }
+});
+
+test('does not auto-allow destructive subcommands of gated commands', () => {
+  for (const cmd of [
+    'git push --force',
+    'git reset --hard',
+    'git clean -fd',
+    'docker rm -f my-container',
+    'kubectl delete pod my-pod',
+    'aws s3 rm s3://bucket --recursive',
+    'aws ec2 terminate-instances --instance-ids i-123',
+  ]) {
+    assert.equal(run({ tool_name: 'Bash', tool_input: { command: cmd } }), '', `expected no rewrite for ${cmd}`);
+  }
+});
+
 test('ignores non-string command', () => {
   assert.equal(run({ tool_name: 'Bash', tool_input: { command: 42 } }), '');
 });
