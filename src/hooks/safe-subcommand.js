@@ -43,4 +43,27 @@ function isSafeSubcommand(firstWord, tokens) {
   return safeSet.has(tokens[1]);
 }
 
-module.exports = { isSafeSubcommand, GIT_SAFE, DOCKER_SAFE, KUBECTL_SAFE, AWS_SAFE_VERB_RE, GATED };
+// A subcommand allowlist only means something if the whole string is a single,
+// unchained invocation. Shell metacharacters that can introduce a second
+// command — `;`, `&&`, `||`, a bare `|`, backticks, `$(...)`, or a newline —
+// let an otherwise-safe subcommand smuggle an arbitrary trailing command
+// through the same permission grant, e.g. `git status && git push --force`
+// or `ls -la; rm -rf ~`. This isn't limited to the four gated commands above:
+// any auto-allowed command (ls, grep, cat, ...) can carry a chained payload
+// the same way, so this check runs unconditionally in bash-rewrite.js.
+const CHAIN_RE = /;|&&|\|\||\||`|\$\(|\n/;
+
+function hasUnsafeChaining(command) {
+  return CHAIN_RE.test(command);
+}
+
+module.exports = {
+  isSafeSubcommand,
+  hasUnsafeChaining,
+  GIT_SAFE,
+  DOCKER_SAFE,
+  KUBECTL_SAFE,
+  AWS_SAFE_VERB_RE,
+  GATED,
+  CHAIN_RE,
+};
