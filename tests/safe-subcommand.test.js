@@ -22,7 +22,10 @@ test('git: read-only subcommands are safe', () => {
 });
 
 test('git: mutating subcommands are not safe', () => {
-  for (const cmd of ['git push --force', 'git reset --hard', 'git clean -fd', 'git checkout .', 'git branch -D foo']) {
+  for (const cmd of [
+    'git push --force', 'git reset --hard', 'git clean -fd', 'git checkout .', 'git branch -D foo',
+    'git reflog expire --expire=now --all', 'git reflog delete',
+  ]) {
     const t = tokens(cmd);
     assert.equal(isSafeSubcommand('git', t), false);
   }
@@ -52,6 +55,20 @@ test('aws: describe/list/get/ls verbs are safe, everything else is not', () => {
   assert.equal(isSafeSubcommand('aws', tokens('aws')), false);
 });
 
+test('aws: get-* verbs that disclose credentials are not safe despite matching the prefix', () => {
+  for (const cmd of [
+    'aws configure get aws_secret_access_key',
+    'aws ecr get-login-password',
+    'aws sts get-session-token',
+    'aws sts get-federation-token --name foo',
+    'aws eks get-token --cluster-name c',
+    'aws secretsmanager get-secret-value --secret-id foo',
+  ]) {
+    const t = tokens(cmd);
+    assert.equal(isSafeSubcommand('aws', t), false, `expected ${cmd} to be unsafe`);
+  }
+});
+
 test('hasUnsafeChaining flags any command-chaining metacharacter', () => {
   for (const cmd of [
     'git status && git push --force',
@@ -61,6 +78,12 @@ test('hasUnsafeChaining flags any command-chaining metacharacter', () => {
     'echo `whoami`',
     'echo $(whoami)',
     'git status\ngit push --force',
+    'git status & git push --force',
+    'git status <(git push --force)',
+    'ls > $(git push --force)',
+    'echo pwned > ~/.zshrc',
+    'echo pwned >> ~/.zshrc',
+    'echo pwned &> ~/.zshrc',
   ]) {
     assert.equal(hasUnsafeChaining(cmd), true, `expected chaining detected in ${cmd}`);
   }

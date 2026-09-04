@@ -97,6 +97,20 @@ test('does not auto-allow a chained command even when the head is safe', () => {
     'kubectl get pods; kubectl delete pod --all',
     'git status\ngit push --force',
     'git log --grep=`whoami`',
+    'git status & git push --force',
+    'git status <(git push --force)',
+    'echo pwned > ~/.zshrc',
+    'git log > ~/.bashrc',
+  ]) {
+    assert.equal(run({ tool_name: 'Bash', tool_input: { command: cmd } }), '', `expected no rewrite for ${cmd}`);
+  }
+});
+
+test('does not auto-allow aws verbs that disclose credentials', () => {
+  for (const cmd of [
+    'aws configure get aws_secret_access_key',
+    'aws ecr get-login-password',
+    'aws sts get-session-token',
   ]) {
     assert.equal(run({ tool_name: 'Bash', tool_input: { command: cmd } }), '', `expected no rewrite for ${cmd}`);
   }
