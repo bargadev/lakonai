@@ -6,6 +6,35 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [1.2.8] - 2026-09-10
+
+### Added
+- **A seventh terse rule: end with the next step.** The shipped rule
+  (`src/rules/lakonai.md`) told the model what to cut but never what to leave
+  the user holding, so a turn could end correct and dead — the work described,
+  the obvious next command unsaid, and the user paying another round trip to
+  ask for it. The rule now asks for one imperative closing line ("Run `npm
+  test`.") and, just as importantly, forbids inventing one: when the task is
+  finished the turn ends, because a rule that always demands a next step turns
+  into a generator of phantom follow-up work, which costs more tokens than it
+  saves.
+
+### Fixed
+- **The test suite read the developer's real Claude config dir.** Both
+  `claudeConfigDir(home)` and `skillDirs(home)` prefer `$CLAUDE_CONFIG_DIR` over
+  the home they are handed. That is correct in production — the real home is
+  always passed, and the variable is how a custom config dir is selected — but
+  under test it silently defeated every fake home on any machine where the
+  variable is set: `doctor.hooksInstalled` found a real `settings.json` where the
+  temporary home had none, and the pixel tests scanned the real installed skills
+  instead of the fixtures they had just written. Six tests across
+  `tests/pixel.test.js` and `tests/plans-features.test.js` failed for this reason
+  alone, and the exposure was worse than a red suite: `convert()` rewrites the
+  skill files it finds, so a machine with `canvas` installed would have had its
+  real skills converted by a test run. `tests/setup-env.js` now unsets the
+  variable once for the whole suite, alongside the existing proxy guard; the
+  tests that exercise it keep setting it themselves through `withEnv`.
+
 ## [1.2.7] - 2026-09-09
 
 ### Fixed
