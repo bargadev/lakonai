@@ -138,6 +138,14 @@ The HTML report is written to `coverage/index.html`.
   (`process.env.HOME || os.homedir()`), not bare `os.homedir()` — the latter
   ignores a test-set `process.env.HOME` under Jest's sandbox and breaks home
   isolation.
+- `tests/setup-env.js` unsets `CLAUDE_CONFIG_DIR` for the whole suite, and it must
+  stay unset. Both `claudeConfigDir(home)` and `skillDirs(home)` prefer that
+  variable over the home they are handed — correct in production, where the real
+  home is always passed and the variable is how a custom config dir is selected,
+  but under test it defeats every fake home on a machine that sets one, silently
+  pointing the test at the developer's real `~/.claude`. That is not just a red
+  suite: `pixel.convert()` rewrites the skill files it finds. Tests that need to
+  exercise the variable set it themselves through `withEnv`.
 
 ## Layout
 
