@@ -46,6 +46,13 @@ Usage:
                              budget is spilled to disk automatically and replaced
                              with a digest - this is how you read the rest.
 
+  lakonai depth [on|off|status]
+                             Output-side brevity. Answers are summary-first by
+                             default (a line budget restated every turn); \`on\`
+                             buys ONE long answer, \`off\` cancels it, \`status\`
+                             reports the current mode. Saying "detalha" /
+                             "more detail" in a prompt does the same as \`on\`.
+
   lakonai gain               Show token savings - INPUT (shell output, measured)
                              AND OUTPUT (how much terser the model writes; measured
                              weekly via your local AI CLI, no API key)
@@ -539,6 +546,35 @@ function drainPendingWork() {
   try { require('../src/install/pending').drain(); } catch { /* best-effort */ }
 }
 
+// Output-side brevity control. `on` grants one long answer, `off` revokes,
+// `status` reports. The grant is written under the global key because a slash
+// command cannot learn the session id.
+function runDepth(rest) {
+  const depth = require('../src/depth');
+  const sub = rest[0] || 'status';
+
+  if (sub === 'on') {
+    depth.grantDepth(null, 1);
+    process.stdout.write('lakonai depth: ON - the next answer may run long, then reverts to brief.\n');
+    return;
+  }
+  if (sub === 'off') {
+    const had = depth.revokeDepth(null);
+    process.stdout.write(`lakonai depth: OFF - brief mode${had ? ' (pending grant cleared)' : ''}.\n`);
+    return;
+  }
+  if (sub === 'status') {
+    const active = depth.depthActive(null);
+    const b = depth.BUDGETS;
+    process.stdout.write(
+      `lakonai depth: ${active ? 'ON (one long answer pending)' : 'OFF - brief mode'}\n` +
+      `  budget: factual <=${b.factual} lines | explanation <=${b.explanation} | plan/review <=${b.plan}\n`
+    );
+    return;
+  }
+  process.stdout.write(`lakonai depth: unknown subcommand "${sub}" (use on|off|status)\n`);
+}
+
 async function main() {
   const argv = process.argv.slice(2);
   drainPendingWork();
@@ -585,6 +621,10 @@ async function main() {
   }
   if (first === 'upgrade') {
     runUpgrade();
+    return;
+  }
+  if (first === 'depth') {
+    runDepth(rest);
     return;
   }
   if (first === 'gain' || first === 'stats') {
@@ -644,4 +684,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { runAndFilter, printVersion, main, runProxy, runMcp, HELP };
+module.exports = { runAndFilter, printVersion, main, runProxy, runMcp, runDepth, HELP };

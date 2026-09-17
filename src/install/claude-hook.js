@@ -36,6 +36,15 @@ const HOOKS = [
     matcher: 'Bash|Read|Grep|Glob|WebFetch|Task',
   },
   {
+    // Output-side brevity. The rule block states the answer budget once at
+    // session start and then drifts out of attention; this restates it on every
+    // turn, and is where a "detalha" request is detected and spent.
+    basename: 'lakon-prompt-depth.js',
+    src: path.join(__dirname, '..', 'hooks', 'prompt-depth.js'),
+    event: 'UserPromptSubmit',
+    matcher: null,
+  },
+  {
     basename: 'lakon-stop-hook.js',
     src: path.join(__dirname, '..', 'hooks', 'stop-hook.js'),
     event: 'Stop',

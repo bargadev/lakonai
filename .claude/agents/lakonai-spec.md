@@ -138,10 +138,63 @@ rtk only *suggests* via a manual command; lakonai *activates by itself*.
 
 ## Terse output side
 
-The shipped terse rule lives in `src/rules/lakonai.md` (the terse rules +
-auto-clarity carve-outs). It's installed into each platform's config by the
-installer. No `mode` or subagent commands — removed to keep lakonai to one simple
-command set (`install` → done).
+The shipped terse rule lives in `src/rules/lakonai.md` (the 8 terse rules, the
+response budget, and the auto-clarity carve-outs). It's installed into each
+platform's config by the installer. No `mode` or subagent commands — removed to
+keep lakonai to one simple command set (`install` → done).
+
+### Answer budget — summary first, depth on demand (`src/depth.js`)
+
+Rule 8 caps how long an answer may be; three layers make it stick, because a
+rule stated once at session start drifts out of attention as context fills.
+
+**The budget** (`BUDGETS` in `src/depth.js`): factual ≤3 prose lines,
+explanation ≤10, plan/review ≤20. Code blocks, diffs, tables and verbatim output
+(paths, identifiers, error strings) are **exempt and must never be truncated** —
+rule 6 outranks rule 8.
+
+**Layer 1 — the rule.** `src/rules/lakonai.md` carries rule 8 plus the
+*Response budget* section. Cheap, but soft.
+
+**Layer 2 — `src/hooks/prompt-depth.js` (`UserPromptSubmit`).** The enforcement
+point. Every turn it injects `depth.briefReminder()` (kept under 8 lines / 500
+chars — it is paid on *every* turn, so a bloated reminder defeats itself) as
+`hookSpecificOutput.additionalContext`. `decide({ sessionId, prompt })` is the
+pure, unit-tested core; `main()` is the I/O shell.
+
+**Layer 3 — `src/proxy/brevity.js`.** Same contract appended to `body.system`
+for every non-Claude-Code client that goes through the proxy. Injected as a
+**new trailing block, never by editing an existing one** — the existing blocks
+carry the cache breakpoints, and rewriting them would bust the prompt cache on
+every request and cost far more than brevity saves. Idempotent via `MARKER`
+(`'lakonai brief mode'`). Wired in `src/proxy/server.js` right after
+`compressRequest`, only for `POST /v1/messages`.
+
+**Depth grants.** Opt-in and consumable — one request buys ONE long answer.
+- triggers: `DEPTH_TRIGGERS` ("detalha", "aprofunda", "explica melhor", "more
+  detail", "in full", …); `BRIEF_TRIGGERS` cancel a pending grant.
+- state: `~/.lakon/depth.json`, `{ sessions: { <id>: { turns, t } } }`, TTL 2h,
+  pruned on every write.
+- `grantDepth` / `depthActive` / `consumeDepth` / `revokeDepth`.
+- **`candidateKeys(sessionId)` = `[<id>, 'default']`.** A slash command cannot
+  learn the session id, so `lakonai depth on` writes the global `'default'` key
+  and any session honours it. `revokeDepth` clears both.
+- surfaces: `lakonai depth on|off|status` (`runDepth` in `bin/lakonai.js`),
+  `/lakonai:deep`, `/lakonai:brief`.
+- kill switch: `LAKON_NO_BRIEF=1` disables layers 2 and 3 entirely.
+
+**Measurement.** `stop-hook.js` `responseShape()` → `{ out_lines, out_chars }`
+recorded on the session entry; `proseLines()` skips fenced code and table rows so
+a turn that ships a patch is not misreported as over budget.
+`tracking.responseStats()` aggregates those turns and `gain` prints
+`answers <N> lines avg across <M> turns (<K> over budget, <P>%)`. It returns
+`null` when no entry carries `out_lines`, so sessions recorded before this
+shipped are simply skipped.
+
+**Deliberately NOT built:** a Stop hook that blocks an over-long answer. `decision:
+"block"` makes Claude *continue*, not rewrite — the long text stays in the
+transcript and a short version is appended after it. Double the tokens, nothing
+cleaned up.
 
 **Universal PATH shim** (`src/install/shim.js`, command `lakonai shim [--off]`).
 The one mechanism that makes shell-output filtering automatic on agents WITHOUT a
@@ -245,7 +298,10 @@ reason it is not a SessionStart auto-rewrite.
   logging there.
 - `session-start.js` — update notice, plus the stale-daemon refresh described in
   *Proxy lifecycle* rule 4. `stop-hook.js` — records session usage AND
-  runs the learner. `throttle.js` — rate-limits notices.
+  runs the learner AND measures the answer's prose length (see *Answer budget*).
+  `throttle.js` — rate-limits notices.
+- `prompt-depth.js` — **UserPromptSubmit**; restates the answer budget every turn
+  and detects/spends a depth request. See *Answer budget* below.
 - `session-end.js` — **SessionEnd**; drains the deferred-work queue
   (`src/install/pending.js`). Registered with `async: true` because SessionEnd
   hooks share a 1.5s budget and async ones are not timed out. It exists because
@@ -423,6 +479,9 @@ src/hooks/session-end.js    SessionEnd hook: drains that queue
 src/proxy/refresh.js        replaces a daemon left stale by an upgrade (SessionStart)
 src/proxy/compress/*.js     per-content-type body compressors
 src/proxy/detect.js         classify a text block (diff/json/log/code/text/short)
+src/depth.js                answer budget + consumable depth grants (~/.lakon/depth.json)
+src/hooks/prompt-depth.js   UserPromptSubmit: restates the budget, spends a grant
+src/proxy/brevity.js        appends the brevity contract to body.system (new block)
 src/hooks/*.js              Claude Code hooks
 src/install/*.js            installer (hooks as launchers, /lakonai:gain, MCP auto-wrap)
 src/install/mcp.js          wrap MCP servers in ~/.claude.json — session guard,

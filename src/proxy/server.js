@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { compressRequest } = require('./compress');
+const { injectBrevity, shouldInject } = require('./brevity');
 const state = require('./state');
 
 const DEFAULT_PORT = state.DEFAULT_PORT;
@@ -53,7 +54,9 @@ function createServer(port = DEFAULT_PORT, upstream = DEFAULT_UPSTREAM) {
         try {
           const parsed = JSON.parse(rawBody.toString('utf8'));
           const { body: compressed, stats } = compressRequest(parsed);
-          bodyToSend = Buffer.from(JSON.stringify(compressed), 'utf8');
+          // Input side is now compressed; ask for a terse answer on the way out.
+          const { body: final } = injectBrevity(compressed, { active: shouldInject() });
+          bodyToSend = Buffer.from(JSON.stringify(final), 'utf8');
           const existing = readStats();
           mergeStats(existing, stats);
           writeStats(existing);
