@@ -6,6 +6,60 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-09-17
+
+### Added
+- **An answer budget: summary first, depth only when asked.** The terse rules
+  told the model *how* to write but never *how much*, so answers stayed correct
+  and unreadable — the right fix buried in twenty lines of prose the user had to
+  mine. Rule 8 now caps an answer by shape (factual ≤3 prose lines, explanation
+  ≤10, plan/review ≤20), and rule 6 still outranks it: code blocks, diffs,
+  tables, paths, identifiers and error strings are exempt and never truncated.
+  Cutting prose is the point; cutting a stack frame was never on the table.
+- **The budget is restated on every turn, not once per session**
+  (`src/hooks/prompt-depth.js`, `UserPromptSubmit`). A rule that lives only in
+  `~/.claude/CLAUDE.md` is stated at session start and then drifts out of
+  attention as the context fills, which is exactly when answers start growing.
+  The hook injects the contract as `additionalContext` each turn. It is kept
+  under 8 lines and 500 characters, asserted by test — spending forty lines per
+  turn to ask for brevity would defeat itself.
+- **Depth is opt-in and consumable.** Saying "detalha", "aprofunda", "explica
+  melhor", "more detail", "in full" — or running `lakonai depth on` or
+  `/lakonai:deep` — buys **one** long answer; the next turn is back inside the
+  budget. "resume", "seja objetivo", "tl;dr", `lakonai depth off` or
+  `/lakonai:brief` cancel a pending grant. State lives in `~/.lakon/depth.json`
+  with a 2-hour TTL, pruned on every write, so a forgotten flag cannot quietly
+  turn brevity off for a session that never asked for it.
+- **`lakonai depth [on|off|status]`**, plus `/lakonai:deep` and
+  `/lakonai:brief`. A slash command cannot learn the session id, so the CLI
+  writes a global grant that any session honours (`candidateKeys`).
+- **The proxy carries the same contract to every other client**
+  (`src/proxy/brevity.js`). Codex, Cursor and raw SDK scripts have no
+  `UserPromptSubmit` hook, so the contract is appended to `body.system` on
+  `POST /v1/messages` instead. Appended as a **new trailing block**, never by
+  rewriting an existing one: the existing blocks carry the prompt-cache
+  breakpoints, and busting the cache on every request would cost far more than
+  brevity saves. Idempotent, and suppressed while a depth grant is pending.
+- **Measurement, so the claim is checkable.** The Stop hook now records the
+  answer's prose length (`out_lines`, `out_chars`) alongside token usage;
+  `proseLines()` skips fenced code and table rows so a turn that ships a patch
+  is not misreported as over budget. `lakonai gain` prints
+  `answers <N> lines avg across <M> turns (<K> over budget, <P>%)`, and omits
+  the line entirely for sessions recorded before this shipped rather than
+  inventing a baseline.
+- `LAKON_NO_BRIEF=1` disables the hook and the proxy injection outright.
+
+### Notes
+- **Not built on purpose: a Stop hook that blocks an over-long answer.** It is
+  technically available (`decision: "block"`), but a Stop block makes the model
+  *continue* rather than rewrite — the long answer stays in the transcript and a
+  short one is appended after it. Double the tokens and nothing cleaned up, so
+  the enforcement point is the prompt, not the stop.
+- Test suite: 998 tests across 61 suites; 100% coverage on every file this
+  change touched (`depth.js`, `prompt-depth.js`, `brevity.js`, `stop-hook.js`,
+  `tracking.js`). The README's test table had drifted to 48 suites / 751 tests
+  and is now recomputed from a real run.
+
 ## [1.2.8] - 2026-09-10
 
 ### Added

@@ -58,6 +58,57 @@ function extractUsage(transcriptPath) {
   return null;
 }
 
+// The assistant's own text for the turn that just ended, concatenated across
+// text blocks. Tool calls and thinking are not part of what the user reads.
+function extractLastAssistantText(transcriptPath) {
+  try {
+    const content = fs.readFileSync(transcriptPath, 'utf8');
+    const lines = content.split('\n').filter(Boolean);
+    for (let i = lines.length - 1; i >= 0; i--) {
+      let obj;
+      try { obj = JSON.parse(lines[i]); } catch { continue; }
+      const msg = obj.message;
+      if (!msg || msg.role !== 'assistant') continue;
+      if (typeof msg.content === 'string') return msg.content;
+      if (Array.isArray(msg.content)) {
+        const text = msg.content
+          .filter((b) => b && b.type === 'text' && typeof b.text === 'string')
+          .map((b) => b.text)
+          .join('\n');
+        if (text.trim()) return text;
+      }
+    }
+    /* istanbul ignore next -- unreadable transcript */
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+// Prose lines only. Fenced code, diffs and tables are exempt from the answer
+// budget (rule 8), so counting them would misreport every turn that ships a
+// patch as a budget violation.
+function proseLines(text) {
+  if (!text || typeof text !== 'string') return 0;
+  let inFence = false;
+  let count = 0;
+  for (const raw of text.split('\n')) {
+    const line = raw.trim();
+    if (/^(```|~~~)/.test(line)) { inFence = !inFence; continue; }
+    if (inFence) continue;
+    if (!line) continue;
+    if (line.startsWith('|')) continue; // table row
+    count += 1;
+  }
+  return count;
+}
+
+function responseShape(transcriptPath) {
+  const text = extractLastAssistantText(transcriptPath);
+  if (text === null) return null;
+  return { out_lines: proseLines(text), out_chars: text.length };
+}
+
 /* istanbul ignore next */
 async function main() {
   try {
@@ -83,6 +134,9 @@ async function main() {
     trackSession({
       session_id: data.session_id || null,
       ...usage,
+      // Output-side brevity telemetry: without a baseline there is no way to
+      // tell whether the answer budget actually changed anything.
+      ...(responseShape(data.transcript_path) || {}),
     });
     process.exit(0);
   } catch {
@@ -92,4 +146,4 @@ async function main() {
 /* istanbul ignore next */
 if (require.main === module) main();
 
-module.exports = { extractUsage, trackSession, lakonHome };
+module.exports = { extractUsage, trackSession, lakonHome, extractLastAssistantText, proseLines, responseShape };

@@ -91,6 +91,27 @@ function byCommand(entries) {
   return [...map.values()].sort((a, b) => b.saved - a.saved);
 }
 
+// Output side: how long the model's own answers are. Session entries are
+// written by the Stop hook; `out_lines` only exists on entries recorded since
+// the answer budget shipped, so older sessions are simply skipped.
+function responseStats(entries) {
+  const turns = entries.filter((e) => isSessionEntry(e) && typeof e.out_lines === 'number');
+  if (!turns.length) return null;
+  const sum = (k) => turns.reduce((a, e) => a + (e[k] || 0), 0);
+  const lines = sum('out_lines');
+  const { BUDGETS } = require('./depth');
+  // The loosest budget (plan/review) is the conservative bar — a turn over it
+  // is long by any reading.
+  const overBudget = turns.filter((e) => e.out_lines > BUDGETS.plan).length;
+  return {
+    turns: turns.length,
+    lines,
+    tokens: sum('out_tokens'),
+    avgLines: Math.round((lines / turns.length) * 10) / 10,
+    overBudget,
+  };
+}
+
 function pct(saved, raw) {
   if (!raw) return 0;
   return Math.round((saved / raw) * 100);
@@ -146,6 +167,16 @@ function report() {
     lines.push(`  ${pad(label, 11)}${green(tok(a.saved))} saved  ${dim(`(${pct(a.saved, a.raw)}%)`)}`);
   }
 
+  const resp = responseStats(entries);
+  if (resp) {
+    const share = Math.round((resp.overBudget / resp.turns) * 100);
+    lines.push('');
+    lines.push(
+      `  ${pad('answers', 11)}${green(`${resp.avgLines} lines`)} avg across ${resp.turns} turns  ` +
+      dim(`(${resp.overBudget} over budget, ${share}%)`)
+    );
+  }
+
   const top = byCommand(entries).slice(0, 5);
   if (top.length) {
     lines.push('');
@@ -160,4 +191,4 @@ function reset() {
   catch { return false; }
 }
 
-module.exports = { record, report, reset, readEntries, logPath };
+module.exports = { record, report, reset, readEntries, logPath, responseStats };

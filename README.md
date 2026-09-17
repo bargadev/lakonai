@@ -20,7 +20,7 @@
   <img src="https://img.shields.io/badge/node-%E2%89%A518-0F0F0F" alt="node ≥18" />
   <img src="https://img.shields.io/badge/deps-0-0F0F0F" alt="zero dependencies" />
   <img src="https://img.shields.io/badge/agents-6-0F0F0F" alt="6 AI agents" />
-  <img src="https://img.shields.io/badge/tests-895-0F0F0F" alt="895 tests" />
+  <img src="https://img.shields.io/badge/tests-998-0F0F0F" alt="998 tests" />
 </p>
 
 <p align="center">
@@ -83,6 +83,7 @@ All numbers from live projects using `lakonai@1.1.1`.
 | Front | What it fixes | How |
 |-------|--------------|-----|
 | **Output** | _"Great question! Let me explain…"_ | Terse-response rule — no preamble, no recap. Auto-clarity for edge cases. |
+| **Answer length** | A correct answer too long to read | Answer budget restated every turn: summary first, depth only when you ask (`lakonai depth on`) |
 | **Shell input** | `git log` dumping 1.8k tokens of metadata | Filters **30+ commands** (git/ls/grep/tests/lint/docker/kubectl/aws…) before they hit context |
 | **Reads** | `Read pnpm-lock.yaml` → 80k of nothing | Hook blocks lockfiles/`node_modules`, caps huge files and `Grep` |
 | **Overflow** | 4k-line build logs no filter knows | Parks on disk, hands the agent a digest — `lakonai peek` reads it back |
@@ -255,6 +256,7 @@ Query it: lakonai peek 30930a0c --grep "error"
 | Pixel (skill PNG) | ✅ | ✅ | — | — |
 | MCP catalog compression | ✅ | — | — | — |
 | Auto-learn new commands | ✅ | ✅ | ✅ | ✅ |
+| Answer budget (per-turn) | ✅ hook | ✅ proxy | ✅ proxy | ✅ proxy |
 
 **Primary target: Claude Code.** The proxy and graph layers intercept the Anthropic protocol and are Claude-Code-specific. CLI filters and the universal shim work on every agent. Every install is idempotent and reversible.
 
@@ -268,6 +270,8 @@ After `lakonai install`, these are available in Claude Code:
 |---------|--------------|
 | `/lakonai:gain` | Token savings — input (measured) and output (estimated) |
 | `/lakonai:stats` | All layers: filters + proxy breakdown by content type |
+| `/lakonai:deep` | Lift the answer budget for one reply, then back to brief |
+| `/lakonai:brief` | Cancel a pending depth grant — back to summary-first |
 
 ---
 
@@ -283,6 +287,7 @@ After `lakonai install`, these are available in Claude Code:
 | `lakonai pixel [--dry-run\|--revert\|--agent]` | Convert skill files to PNG |
 | `lakonai compress-memory <file>` | Shrink a memory file via your local AI CLI |
 | `lakonai peek [id]` | Read output parked in sandbox (`--grep/--offset/--limit`) |
+| `lakonai depth [on\|off\|status]` | Answer budget: `on` buys one long reply, `off` cancels, `status` reports |
 | `lakonai gain` | Token savings across all measured fronts |
 | `lakonai inspect <cmd>` | Debug what filter applies to a command |
 | `lakonai mcp [wrap\|unwrap]` | MCP catalog compression status/lifecycle |
@@ -342,16 +347,16 @@ Input is measured and deterministic. Output is estimated by your local AI CLI (n
 
 ## Test suite
 
-895 tests across 58 suites — all passing, no mocks on I/O boundaries.
+998 tests across 61 suites — all passing, no mocks on I/O boundaries.
 
 | Type | Suites | Tests |
 |------|--------|-------|
-| Unit | 13 | 170 |
-| Integration (module + real FS) | 33 | 530 |
-| E2E / CLI (spawn + real process) | 2 | 51 |
-| **Total** | **48** | **751** |
+| Unit | 14 | 194 |
+| Integration (module + real FS / real HTTP) | 32 | 614 |
+| E2E / CLI (spawn + real process) | 15 | 190 |
+| **Total** | **61** | **998** |
 
-Coverage: **95% statements · 89% branches · 97% functions**
+Coverage: **90% statements · 85% branches · 93% functions** (gate: 80% global; target 100% per new file)
 
 Branch ceiling is ~90% — the remaining gaps are canvas-native rendering, platform-specific `fs.watch` fallback, and the HTTPS transport branch (all marked `/* istanbul ignore next */` with justification).
 
