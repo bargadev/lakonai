@@ -122,4 +122,17 @@ describe('E2E: the launcher Codex runs rewrites a cd-prefixed command', () => {
     assert.equal(out.hookSpecificOutput.permissionDecision, 'allow');
     assert.equal(out.hookSpecificOutput.updatedInput.command, 'cd /repo && lakonai git status');
   });
+
+  test('the Codex launcher never rewrites a command it cannot approve', () => {
+    const home = fakeHome();
+    codex.installCodexHooks(home);
+    const launcher = codex.launcherPath(home, 'lakon-bash-rewrite.js');
+    assert.match(fs.readFileSync(launcher, 'utf8'), /LAKON_HOOK_AGENT = 'codex'/);
+    const res = spawnSync(launcher, [], {
+      input: JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'npm install' } }),
+      encoding: 'utf8',
+      env: { ...process.env, HOME: home, LAKON_HOME: home },
+    });
+    assert.equal(res.stdout, '');
+  });
 });

@@ -91,3 +91,38 @@ describe('buildResponse', () => {
     });
   });
 });
+
+describe('respond', () => {
+  const { respond, coreCommand } = require('../src/hooks/bash-rewrite');
+  const R = { allow: [], deny: [], ask: [] };
+  test('coreCommand strips cd prefixes', () => {
+    assert.equal(coreCommand('cd a && cd b && git log'), 'git log');
+    assert.equal(coreCommand('git log'), 'git log');
+  });
+  test('silent for non-Bash, empty or unsupported input', () => {
+    assert.equal(respond(null), null);
+    assert.equal(respond({ tool_name: 'Read', tool_input: { command: 'ls' } }), null);
+    assert.equal(respond({ tool_name: 'Bash', tool_input: {} }, { rules: R }), null);
+    assert.equal(respond({ tool_name: 'Bash', tool_input: { command: 'python3 x' } }, { rules: R }), null);
+  });
+  test('decides on the command behind the cd prefix', () => {
+    const out = respond({ tool_name: 'Bash', tool_input: { command: 'cd x && make' }, permission_mode: 'default' }, { env: {}, rules: R });
+    assert.deepEqual(out, { hookSpecificOutput: { hookEventName: 'PreToolUse', updatedInput: { command: 'cd x && lakonai make' } } });
+  });
+  test('loads rules from disk when none are passed', () => {
+    const out = respond({ tool_name: 'Bash', tool_input: { command: 'ls' }, cwd: os.tmpdir() }, { env: {} });
+    assert.equal(out.hookSpecificOutput.permissionDecision, 'allow');
+  });
+});
+
+describe('respond: agents and skips (in-process)', () => {
+  const { respond } = require('../src/hooks/bash-rewrite');
+  test('codex env + non-read-only command is skipped', () => {
+    const R = { allow: [], deny: [], ask: [] };
+    assert.equal(respond({ tool_name: 'Bash', tool_input: { command: 'make' } }, { env: { LAKON_HOOK_AGENT: 'codex' }, rules: R }), null);
+  });
+  test('a denied command is skipped', () => {
+    const R = { allow: [], deny: ['Bash(git push:*)'], ask: [] };
+    assert.equal(respond({ tool_name: 'Bash', tool_input: { command: 'git push' } }, { env: {}, rules: R }), null);
+  });
+});

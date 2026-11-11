@@ -6,6 +6,26 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-11
+
+### Security
+- **The Bash hook only approves what you already approve.** It used to answer
+  `permissionDecision: "allow"` for every command it rewrote, so `git push`,
+  `npm install`, `docker`, `kubectl` or a learned command skipped your
+  permission prompt and auto mode's review. Each command now gets one of three
+  outcomes (`src/hooks/permissions.js`):
+  - read-only commands (`git status/log/diff`, `ls`, `cat`, `grep`, `find`
+    without `-exec`/`-delete`, print-only `sed -n`, …), commands matching one of
+    your `allow` rules, and `bypassPermissions` sessions are rewritten and
+    approved, as before;
+  - commands matching a `deny` or `ask` rule are left untouched. Rules are
+    checked against the rewritten input, so `lakonai git push` used to slip past
+    `Bash(git push:*)`;
+  - everything else is rewritten **without** a decision. Output is still
+    filtered, and your prompt or auto mode still decides.
+- **Codex** rejects a rewrite that is not approved, so under Codex only
+  read-only commands are rewritten. The launcher sets `LAKON_HOOK_AGENT=codex`.
+
 ## [1.4.1] - 2026-11-11
 
 ### Fixed
