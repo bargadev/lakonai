@@ -6,6 +6,14 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-11-11
+
+### Fixed
+- The e2e grep scenario expected a specific file among the first 15 matches,
+  but `grep -r` walks directories in filesystem order, which differs on Linux.
+  It now checks for content every match shares. 1.4.0 never reached npm
+  because this test failed in the publish job; 1.4.1 ships the same release.
+
 ## [1.4.0] - 2026-11-11
 
 ### Added
