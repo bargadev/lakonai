@@ -15,6 +15,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { countTokensApprox } = require('./filters/utils');
+const { splitCdPrefix } = require('./shell');
 
 const MIN_CALLS = Number(process.env.LAKON_LEARN_MIN_CALLS) || 3;
 const MIN_AVG_TOKENS = Number(process.env.LAKON_LEARN_MIN_TOKENS) || 300;
@@ -44,12 +45,44 @@ function writeJson(file, data) {
   }
 }
 
-// Base command of a shell string, skipping env assignments / sudo / env.
+// A learnable command is a bare executable name. Paths, quoted fragments,
+// flags and split-up arguments (`Support/…` from an unquoted
+// `Application Support`, `-n`, `foo;`) were landing in learned.json.
+const VALID_NAME = /^[A-Za-z0-9_][\w.+-]*$/;
+
+// Never learned, even when they are loud:
+//   - shell builtins / keywords and lakonai itself — nothing to filter, or
+//     the output is already filtered;
+//   - agent tool names logged by the guards (Read, Grep, …);
+//   - interpreters and file mutators — a learned command is rewritten by the
+//     PreToolUse hook, which answers "allow", and `node -e …` or `rm` must
+//     keep going through the user's own permission rules.
+const NEVER_LEARN = new Set([
+  'cd', 'echo', 'printf', 'export', 'source', 'set', 'unset', 'eval', 'exec', 'exit',
+  'command', 'builtin', 'type', 'which', 'alias', 'true', 'false', 'test',
+  'for', 'while', 'until', 'if', 'then', 'else', 'fi', 'do', 'done', 'case', 'esac',
+  'sleep', 'wait', 'read', 'pwd', 'time', 'lakonai',
+  'Read', 'Grep', 'Glob', 'Bash', 'Edit', 'Write',
+  'node', 'python', 'python3', 'ruby', 'perl', 'php', 'deno', 'bun',
+  'bash', 'sh', 'zsh', 'fish', 'osascript',
+  'rm', 'mv', 'cp', 'ln', 'chmod', 'chown', 'mkdir', 'rmdir', 'touch', 'kill', 'pkill',
+  'dd', 'tee', 'xargs', 'sudo', 'env',
+]);
+
+function isLearnable(cmd) {
+  return typeof cmd === 'string' && VALID_NAME.test(cmd) && !NEVER_LEARN.has(cmd);
+}
+
+// Base command of a shell string: skips `cd <dir> &&` prefixes, env
+// assignments and sudo/env, and returns '' for anything that is not learnable.
 function baseCommand(command) {
-  const tokens = String(command).trim().split(/\s+/);
+  let s = String(command).trim();
+  for (let cd = splitCdPrefix(s); cd; cd = splitCdPrefix(s)) s = cd.rest;
+  const tokens = s.split(/\s+/);
   let i = 0;
   while (i < tokens.length && (/^\w+=/.test(tokens[i]) || tokens[i] === 'sudo' || tokens[i] === 'env')) i++;
-  return tokens[i] || '';
+  const cmd = tokens[i] || '';
+  return isLearnable(cmd) ? cmd : '';
 }
 
 // Parse a Claude Code transcript (JSONL) into [{ cmd, tokens }] for every Bash
@@ -97,7 +130,7 @@ function promote(stats, isBuiltin) {
   const learned = new Set(readJson(learnedPath(), []));
   let changed = false;
   for (const [cmd, s] of Object.entries(stats)) {
-    if (learned.has(cmd) || isBuiltin(cmd)) continue;
+    if (learned.has(cmd) || isBuiltin(cmd) || !isLearnable(cmd)) continue;
     if (s.count >= MIN_CALLS && s.tokens / s.count >= MIN_AVG_TOKENS) {
       learned.add(cmd);
       changed = true;
@@ -154,7 +187,7 @@ function analyzeLog(isBuiltin) {
       continue;
     }
     const cmd = e && typeof e.cmd === 'string' ? e.cmd : null;
-    if (!cmd || cmd === 'session' || isBuiltin(cmd)) continue;
+    if (!cmd || cmd === 'session' || isBuiltin(cmd) || !isLearnable(cmd)) continue;
     const s = stats[cmd] || { count: 0, tokens: 0 };
     s.count += 1;
     s.tokens += e.raw || 0;
@@ -179,7 +212,12 @@ function maybeLearnFromLog(isBuiltin, now = Date.now()) {
 
 let _learnedCache;
 function learnedCommands() {
-  if (_learnedCache === undefined) _learnedCache = new Set(readJson(learnedPath(), []));
+  // Filter on read, so entries learned by older versions (paths, `node`)
+  // stop being rewritten without anyone editing learned.json by hand.
+  if (_learnedCache === undefined) {
+    const raw = readJson(learnedPath(), []);
+    _learnedCache = new Set(Array.isArray(raw) ? raw.filter(isLearnable) : []);
+  }
   return _learnedCache;
 }
 function isLearned(cmd) {
@@ -192,6 +230,8 @@ function _resetCache() {
 
 module.exports = {
   baseCommand,
+  isLearnable,
+  NEVER_LEARN,
   extractBashUsage,
   promote,
   analyzeTranscript,

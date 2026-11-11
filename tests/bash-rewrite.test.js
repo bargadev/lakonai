@@ -82,3 +82,13 @@ test('survives malformed JSON', () => {
   const res = spawnSync('node', [HOOK], { input: 'not json', encoding: 'utf8' });
   assert.equal(res.status, 0);
 });
+
+test('rewrites the command behind a cd prefix', () => {
+  const out = run({ tool_name: 'Bash', tool_input: { command: 'cd /repo && git diff' } });
+  assert.equal(JSON.parse(out).hookSpecificOutput.updatedInput.command, 'cd /repo && lakonai git diff');
+});
+
+test('never approves a chained command', () => {
+  assert.equal(run({ tool_name: 'Bash', tool_input: { command: 'git status && rm -rf /tmp/x' } }), '');
+  assert.equal(run({ tool_name: 'Bash', tool_input: { command: 'cat f | sh' } }), '');
+});

@@ -31,7 +31,9 @@ rewritten:   lakonai npm test
    ▼
 dispatch (src/filters/index.js → filterCommand), in order:
    1. test runner?  (test.isTestCommand)            → src/filters/test.js
-   2. JS handler for the first word?                → git/ls/cat/grep/find
+   2. JS handler for the first word?                → git/ls/cat/grep/find/sed
+      (git routes on git.subcommand(args), which skips -C <dir>, -c k=v,
+       --no-pager, --git-dir=… — reading args[0] made `git -C x diff` unfiltered)
    3. declarative engine def matches full command?  → engine.applyDef
    4. command auto-learned?                         → src/filters/auto.js
    5. none                                          → passthrough (raw)
@@ -45,6 +47,9 @@ sandbox spill (src/sandbox.js) → full text to disk, digest to the agent
 
 `supportedFirstWords()` = `builtinFirstWords()` (handlers + test runners + engine
 defs) ∪ `learn.learnedCommands()`. The hook intercepts exactly this set.
+
+`sed` is a built-in read handler (`cat.filter` with `maxLines: Infinity`): the
+range in `sed -n 'a,bp'` is the agent's explicit choice, so it is never cut.
 
 ## Sandbox spill (`src/sandbox.js`) — the last line of defence
 
@@ -106,7 +111,9 @@ actually paid, not what it would have paid.
 2. **Declarative engine** (`src/filters/engine.js` + `src/filters/defs.js`) — for
    "strip noise + cap" cases. Adding a command = one entry in `defs.js`. Pipeline
    stages: stripAnsi → replace → matchOutput (short-circuit) → strip/keepLines →
-   dedup → truncateLineAt → head/tail → maxLines → onEmpty.
+   dedup → truncateLineAt → head/tail → maxLines → pinLines → onEmpty.
+   `pinLines` (regex list) re-appends lines a head/max cap would drop — a build
+   log's verdict sits at the end (`make` pins error/warning/`make: ***`).
 3. **Auto-learned** (`src/learn.js` + `src/filters/auto.js`) — see below.
 
 ### To add a simple command filter
@@ -135,6 +142,13 @@ rtk only *suggests* via a manual command; lakonai *activates by itself*.
   `auto.js` (collapse repeated/blank lines, announced truncation only). It must
   NEVER drop lines by guessing they're noise — that could hide a real error.
 - Disable with `LAKON_NO_LEARN=1` (also gated by `LAKON_NO_TRACK=1`).
+- `isLearnable(cmd)`: bare executable names only (`/^[A-Za-z0-9_][\w.+-]*$/`)
+  and never `NEVER_LEARN` (shell builtins, `lakonai`, agent tool names,
+  interpreters like node/python3, mutators like rm/xargs). A learned command is
+  rewritten by a hook that answers `allow`, so learning `node` would
+  auto-approve `node -e …`. `learnedCommands()` filters on read, so garbage
+  older versions stored in learned.json is ignored. `baseCommand` looks through
+  `cd <dir> &&` prefixes (src/shell.js) and env assignments.
 
 ## Terse output side
 
@@ -274,10 +288,20 @@ reason it is not a SessionStart auto-rewrite.
 
 - `bash-rewrite.js` — PreToolUse; rewrites supported Bash commands to `lakonai …`.
   The allowlist bounds what gets *filtered*; it no longer bounds what gets
-  *spilled* — `output-spill.js` nets the rest at PostToolUse. Still worth knowing:
-  `cd x && git status` and `FOO=1 pytest` rewrite to nothing (only the first word
-  is inspected), so they skip the filters. Widening that means shell parsing
-  (quotes, `$(…)`, heredocs), which stays deliberately un-done.
+  *spilled* — `output-spill.js` nets the rest at PostToolUse. It answers
+  `permissionDecision: "allow"`, which skips the user's permission prompt, so it
+  only rewrites a command it can fully see. `src/shell.js` (a tiny quote-aware
+  lexer, `topLevelOps`/`splitCdPrefix`) backs these rules:
+  - `cd <one word> && cmd` / `cd <dir>; cmd` → `cd <dir> && lakonai cmd`
+    (recursive; the dominant shape agents emit, ~120k calls in one user's log);
+  - any top-level `&&` `||` `;` `&` newline `$(…)` backtick `>` `<` → no
+    rewrite (only `2>&1` and `>/dev/null` are tolerated);
+  - `|` only into `head`/`tail` (`PIPE_SINKS`) — `| jq`, `| wc`, `| sh`,
+    `| git apply` would consume filtered bytes;
+  - `sed -i` / `--in-place` is skipped (no output to filter).
+  `FOO=1 pytest` still rewrites to nothing (first word is `FOO=1`).
+  The same file is installed into Codex as a PreToolUse hook
+  (`src/install/codex-hook.js`); Codex accepts the identical JSON.
 - `read-guard.js` — denies Reads of build/dep dirs & lockfiles; caps huge files via
   `capForFile(path)`, which returns `null` (fits) / `{limit,lines,tokens}` (cap) /
   `{deny:true,…}` (uncappable). **Two ceilings, tighter wins:** `AUTO_CAP_LINES`
@@ -369,10 +393,21 @@ started afterwards, never for one already pinned to the dead port.
 ## Installer (`src/install/`)
 
 `index.js` orchestrates; `platforms.js` lists targets; `claude-hook.js` writes the
-hook launchers + merges `settings.json`; `claude-commands.js` writes the
+hook launchers + merges `settings.json`; `codex-hook.js` writes
+`~/.codex/hooks/lakon-bash-rewrite.js` + merges `~/.codex/hooks.json`
+(PreToolUse, matcher `^Bash$`, timeout 10; Codex skips it until the user trusts
+it via `/hooks`; unparsable hooks.json is left untouched); `claude-commands.js` writes the
 `/lakonai:gain` slash command; `paths.js` resolves home via `homedir()` =
 `process.env.HOME || os.homedir()` (NOT bare `os.homedir()` — that ignores a
 test-set HOME under Jest). `backup.js` backs up before writing.
+
+## End-to-end savings (`scripts/savings-e2e.js`, `scripts/savings-chart.js`)
+
+Builds a deterministic git repo on disk and runs real commands raw vs through
+the real CLI (and one row through the real hook + `sh`). Each scenario has a
+`minSaved` floor and `mustKeep` lines; `tests/savings-e2e.test.js` asserts both.
+Tokens ≈ chars/4 (word counts hide path-folding savings). `npm run bench:e2e`
+regenerates `docs/assets/savings-e2e.svg` (README chart) + `docs/benchmark-e2e.md`.
 
 ## Benchmark (`scripts/bench.js`)
 
@@ -461,7 +496,12 @@ src/filters/engine.js       declarative pipeline engine
 src/filters/defs.js         declarative filter definitions (data)
 src/filters/auto.js         conservative auto-learned filter
 src/filters/utils.js        stripAnsi, truncateLines, dedupConsecutive, groupByDir
-src/learn.js                auto-learning (transcript → stats → promote)
+src/learn.js                auto-learning (transcript → stats → promote), isLearnable
+src/shell.js                quote-aware lexer: topLevelOps, isSingleWord, splitCdPrefix
+src/tracking.js             log.jsonl (+ agent: detectAgent from CLAUDECODE/CODEX_*/GEMINI_CLI/LAKON_AGENT), gain report, byAgent
+src/install/codex-hook.js   Codex hooks.json + launcher (install/uninstall/installed)
+scripts/savings-e2e.js      e2e savings harness (fixture repo, real CLI + hook)
+scripts/savings-chart.js    renders docs/assets/savings-e2e.svg + docs/benchmark-e2e.md
 src/sandbox.js              spill oversized output to disk + `lakonai peek` back
 src/doctor.js               `lakonai doctor` — per-platform health (CLI/rule/hooks)
 src/bench.js                self-contained filter benchmark (shown by `gain` when empty)
@@ -495,8 +535,9 @@ removed; `compress-memory` takes a freeform instruction + `--prune`/`--rewrite`
 validation levels; `upgrade` self-updates via the detected package manager + an
 oh-my-zsh-style `[Y/n]` prompt; `install` offers the shim only when a hook-less
 agent is detected.) Everything else is automatic after install. Cross-platform
-reality: hooks (filtering/learning/guards) are **Claude Code only**; other
-platforms get the rule + `lakonai` prefix (compliance), or the shim. `lakonai doctor` shows
+reality: the Bash rewrite hook runs on **Claude Code and Codex**; the other
+hooks (learning/guards/spill/depth) are Claude Code only; other platforms get
+the rule + `lakonai` prefix (compliance), or the shim. `lakonai doctor` shows
 what's active.
 
 When unsure, read the file before answering — never guess a path or symbol that

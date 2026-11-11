@@ -103,6 +103,26 @@ function filterDiff(raw) {
   return truncateLines(joined, 120);
 }
 
+// Global options that sit between `git` and its subcommand. Agents run
+// `git -C <repo> diff` constantly; reading args[0] saw "-C" and the diff
+// filter never ran. Options listed in WITH_VALUE consume the next argument.
+const WITH_VALUE = new Set(['-C', '-c', '--git-dir', '--work-tree', '--namespace', '--exec-path', '--config-env']);
+
+function subcommand(args) {
+  if (!Array.isArray(args)) return undefined;
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (typeof a !== 'string') return undefined;
+    if (WITH_VALUE.has(a)) {
+      i++;
+      continue;
+    }
+    if (a.startsWith('-')) continue; // --no-pager, -P, --git-dir=…, --bare
+    return a;
+  }
+  return undefined;
+}
+
 function filter(subcmd, raw) {
   switch (subcmd) {
     case 'log': return filterLog(raw);
@@ -113,4 +133,4 @@ function filter(subcmd, raw) {
   }
 }
 
-module.exports = { filter, filterLog, filterStatus, filterDiff };
+module.exports = { filter, subcommand, filterLog, filterStatus, filterDiff };

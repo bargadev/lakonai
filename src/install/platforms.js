@@ -5,6 +5,7 @@ const path = require('path');
 const { backupFile, restoreAllBackups } = require('./backup');
 const { installHook, uninstallHook } = require('./claude-hook');
 const { installCommands, uninstallCommands } = require('./claude-commands');
+const { installCodexHooks, uninstallCodexHooks, codexHooksInstalled } = require('./codex-hook');
 const { wrapMcp, unwrapMcp } = require('./mcp');
 const { writeFileAtomic } = require('./atomic');
 const { claudeConfigDir } = require('./paths');
@@ -113,9 +114,22 @@ const PLATFORMS = [
     label: 'Codex CLI',
     scope: 'global',
     rulePath: (home) => path.join(home, '.codex', 'AGENTS.md'),
+    hasHooks: true,
+    hooksInstalled: (home) => codexHooksInstalled(home),
     detect: (home) => dirExists(path.join(home, '.codex')),
-    install: ({ home, rule, id }) => upsertBlock(id, path.join(home, '.codex', 'AGENTS.md'), rule),
-    uninstall: ({ home }) => stripBlock(path.join(home, '.codex', 'AGENTS.md')),
+    install: ({ home, rule, id }) => {
+      const rulePath = upsertBlock(id, path.join(home, '.codex', 'AGENTS.md'), rule);
+      const hooks = installCodexHooks(home);
+      /* istanbul ignore next -- the parse-failure note is covered in codex-hook tests */
+      const suffix = hooks.installed
+        ? '+ PreToolUse hook (trust it once with /hooks in Codex)'
+        : `(hook: ${hooks.note})`;
+      return `${rulePath} ${suffix}`;
+    },
+    uninstall: ({ home }) => {
+      uninstallCodexHooks(home);
+      return stripBlock(path.join(home, '.codex', 'AGENTS.md'));
+    },
   },
   {
     id: 'cursor',

@@ -1,7 +1,7 @@
 'use strict';
 
 // `lakonai doctor` — per-platform health check: is the CLI on PATH, is the rule
-// installed, and (for Claude Code) are the hooks registered? Gives an honest,
+// installed, and (for Claude Code and Codex) are the hooks registered? Gives an honest,
 // per-platform view of what's actually active.
 
 const fs = require('fs');
@@ -37,7 +37,7 @@ function report(home) {
       detected: !!p.detect(h),
       ruleInstalled: platforms.hasBlock(p.rulePath(h)),
     };
-    if (p.hasHooks) row.hooksInstalled = hooksInstalled(h);
+    if (p.hasHooks) row.hooksInstalled = p.hooksInstalled ? p.hooksInstalled(h) : hooksInstalled(h);
     return row;
   });
   return { cli: cliOnPath(), platforms: rows };

@@ -6,6 +6,55 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-11
+
+### Added
+- **`cd <dir> && cmd` is filtered.** The Bash hook only looked at the first word,
+  and agents prefix almost every command with `cd`: in one real log that was
+  120,478 calls and ~16M tokens that never reached a filter. The hook now
+  rewrites the command behind the prefix (`cd x && lakonai git log`).
+  `src/shell.js` is a small quote-aware lexer that backs this.
+- **Codex CLI gets the hook.** Codex 0.16x+ reads Claude-compatible hooks from
+  `~/.codex/hooks.json`, so `lakonai install` now installs the same PreToolUse
+  rewrite there (`src/install/codex-hook.js`). Before, Codex only filtered when
+  the model remembered the `lakonai` prefix. Codex skips a new hook until you
+  trust it once with `/hooks`. `lakonai doctor` reports Codex hooks.
+- **Savings per agent.** Each log entry records the agent (`CLAUDECODE`,
+  `CODEX_*`, `GEMINI_CLI`, or `LAKON_AGENT`), and `lakonai gain` prints a
+  "by agent" line.
+- **End-to-end savings proof.** `tests/savings-e2e.test.js` runs real commands on
+  a fixture git repo, raw vs through the real CLI and hook. It fails CI when a
+  command drops below its floor or loses a line that matters.
+  `npm run bench:e2e` renders the README chart (`docs/assets/savings-e2e.svg`)
+  and `docs/benchmark-e2e.md` from the same run.
+- `sed` is a built-in read filter. It never truncates the range the agent asked for.
+
+### Fixed
+- **`git -C <dir> diff` was unfiltered.** The git filter read `args[0]` as the
+  subcommand, so global options (`-C`, `-c`, `--no-pager`, `--git-dir`) hid
+  log/diff/status. `git.subcommand()` now skips them.
+- **`make` cut the build verdict.** `maxLines: 60` kept the head, but a build
+  log's warnings and errors come at the end. The engine has a new `pinLines`
+  option that re-appends matching lines after the cap, and `make` pins
+  error/warning/`make: ***`. The e2e suite caught this.
+- **Garbage in the learned list.** Fragments like `Support/…;`,
+  `~/Library/Application\`, `Read` and `echo` were being learned. A command is
+  now learnable only if it is a bare executable name. Entries already on disk
+  are ignored on read.
+
+### Security
+- **The hook no longer approves commands it cannot see.** The rewrite answers
+  `permissionDecision: "allow"`, which skips the permission prompt. A command
+  such as `git status && rm -rf x` was rewritten, so the whole chain was
+  auto-approved. Chains, substitutions, redirects into files, and pipes into
+  anything but `head`/`tail` are now left to the normal permission flow. This
+  also stops filtered bytes from feeding `| jq`, `| git apply` or `> file`.
+- **Interpreters and mutators are never auto-learned** (`node`, `python3`,
+  `bash`, `rm`, `xargs`, …). A learned command gets the same "allow", so a
+  learned `node` auto-approved `node -e …`. `node` already learned by older
+  versions is dropped on read. `sed -i` is not rewritten either, since it has no
+  output to filter.
+
 ## [1.3.0] - 2026-09-17
 
 ### Added

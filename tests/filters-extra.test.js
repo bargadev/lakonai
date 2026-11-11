@@ -269,3 +269,18 @@ test('filterCommand routes each supported cmd to a handler', () => {
   filterCommand('rg', [], 'a:1: hit');
   filterCommand('ag', [], 'a:1: hit');
 });
+
+describe('engine pinLines', () => {
+  const engine = require('../src/filters/engine');
+  test('a pinned line past the cap is re-appended after the marker', () => {
+    const def = engine.findFilter('make');
+    const raw = Array.from({ length: 100 }, (_, i) => `cc -c f${i}.c`).concat(["f.c:1: warning: unused 'x'", 'make: *** [all] Error 2']).join('\n');
+    const out = engine.applyDef(def, raw);
+    assert.ok(out.includes('more lines'));
+    assert.ok(out.endsWith("f.c:1: warning: unused 'x'\nmake: *** [all] Error 2"));
+  });
+  test('nothing is pinned when the output fits', () => {
+    const def = engine.findFilter('make');
+    assert.equal(engine.applyDef(def, 'cc -c a.c\nwarning: x'), 'cc -c a.c\nwarning: x');
+  });
+});

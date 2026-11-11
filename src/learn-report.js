@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { isLearnable } = require('./learn');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const REPORT_TTL_MS = DAY_MS;
@@ -61,7 +62,7 @@ function readLogSinks() {
 function readUnfilteredSinks(isBuiltin) {
   const stats = readJson(statsPath(), {});
   return Object.entries(stats)
-    .filter(([cmd]) => !isBuiltin(cmd))
+    .filter(([cmd]) => !isBuiltin(cmd) && isLearnable(cmd))
     .map(([cmd, s]) => ({
       cmd,
       calls: s.count,
