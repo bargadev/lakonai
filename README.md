@@ -276,7 +276,17 @@ Query it: lakonai peek 30930a0c --grep "error"
 
 ¹ Codex CLI 0.16x+ runs the same PreToolUse hook from `~/.codex/hooks.json`. Codex skips new hooks until you trust them once with `/hooks`.
 
-The Bash hook rewrites `cmd` and `cd <dir> && cmd` to go through `lakonai`. It answers "allow", so it only rewrites a command it can fully see: chains (`&&`, `;`, `||`), `$(…)`, redirects into files, and pipes into anything but `head`/`tail` run unchanged through your normal permission rules.
+The Bash hook rewrites `cmd` and `cd <dir> && cmd` to go through `lakonai`, and it never approves more than you already do:
+
+| Command | What the hook does |
+|---|---|
+| Read-only (`git status/log/diff`, `ls`, `cat`, `grep`, `find` without `-exec`/`-delete`, `sed -n 'a,bp'`) | rewrites and approves |
+| Matches one of your `allow` rules, or the session runs with `bypassPermissions` | rewrites and approves (you already did) |
+| Matches one of your `deny`/`ask` rules | leaves it untouched, so the rule still fires |
+| Anything else (`npm test`, `docker`, `git push`, …) | rewrites **without** approving: your prompt or auto mode still decides |
+| Chains (`&&`, `;`, `||`), `$(…)`, redirects into files, pipes into anything but `head`/`tail` | runs unchanged |
+
+On Codex, which requires an approval to rewrite, only read-only commands are rewritten.
 
 **Primary target: Claude Code.** The proxy and graph layers intercept the Anthropic protocol and are Claude-Code-specific. CLI filters and the universal shim work on every agent. Every install is idempotent and reversible.
 

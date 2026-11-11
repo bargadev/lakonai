@@ -81,7 +81,7 @@ function installCodexHooks(home) {
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.writeFileSync(
       dest,
-      `#!/usr/bin/env node\n// lakonai hook launcher (generated)\nrequire('module')._load(${JSON.stringify(h.src)}, null, true);\n`
+      `#!/usr/bin/env node\n// lakonai hook launcher (generated)\n// Codex rejects updatedInput without allow: the hook rewrites read-only commands only.\nprocess.env.LAKON_HOOK_AGENT = 'codex';\nrequire('module')._load(${JSON.stringify(h.src)}, null, true);\n`
     );
     fs.chmodSync(dest, 0o755);
     data.hooks[h.event] = data.hooks[h.event] || [];

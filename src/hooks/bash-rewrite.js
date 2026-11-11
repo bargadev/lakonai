@@ -3,6 +3,7 @@
 
 const { supportedFirstWords } = require('../filters');
 const { topLevelOps, splitCdPrefix } = require('../shell');
+const permissions = require('./permissions');
 
 const FILTERED_CMDS = supportedFirstWords();
 
@@ -56,16 +57,38 @@ function rewriteIfNeeded(command) {
   return rewriteSimple(trimmed);
 }
 
-// The PreToolUse answer. Claude Code and Codex CLI share this shape: `allow`
-// plus `updatedInput` (Codex rejects `updatedInput` without `allow`).
-function buildResponse(toolInput, rewritten) {
-  return {
-    hookSpecificOutput: {
-      hookEventName: 'PreToolUse',
-      permissionDecision: 'allow',
-      updatedInput: { ...toolInput, command: rewritten },
-    },
-  };
+// The PreToolUse answer. With `allow` the call skips the permission prompt;
+// without a decision the rewritten command goes through the normal flow (the
+// prompt, or auto mode's review). Codex accepts only the `allow` form.
+function buildResponse(toolInput, rewritten, decision = 'allow') {
+  const out = { hookEventName: 'PreToolUse' };
+  if (decision === 'allow') out.permissionDecision = 'allow';
+  out.updatedInput = { ...toolInput, command: rewritten };
+  return { hookSpecificOutput: out };
+}
+
+// The command that actually runs, behind any `cd <dir> &&` prefixes.
+function coreCommand(command) {
+  let s = command.trim();
+  for (let cd = splitCdPrefix(s); cd; cd = splitCdPrefix(s)) s = cd.rest;
+  return s;
+}
+
+// Full hook decision for one PreToolUse payload. Returns the JSON answer, or
+// null to stay silent (the call proceeds untouched).
+function respond(data, { env = process.env, rules } = {}) {
+  if (!data || data.tool_name !== 'Bash') return null;
+  const command = data.tool_input && data.tool_input.command;
+  const rewritten = rewriteIfNeeded(command);
+  if (!rewritten) return null;
+  const decision = permissions.decide({
+    core: coreCommand(command),
+    mode: data.permission_mode,
+    agent: env.LAKON_HOOK_AGENT === 'codex' ? 'codex' : 'claude',
+    rules: rules || permissions.loadRules({ cwd: data.cwd }),
+  });
+  if (decision === 'skip') return null;
+  return buildResponse(data.tool_input, rewritten, decision);
 }
 
 /* istanbul ignore next */
@@ -82,14 +105,8 @@ async function main() {
     const raw = await readStdin();
     if (!raw.trim()) process.exit(0);
 
-    const data = JSON.parse(raw);
-    if (data.tool_name !== 'Bash') process.exit(0);
-
-    const command = data.tool_input && data.tool_input.command;
-    const rewritten = rewriteIfNeeded(command);
-    if (!rewritten) process.exit(0);
-
-    process.stdout.write(JSON.stringify(buildResponse(data.tool_input, rewritten)));
+    const response = respond(JSON.parse(raw));
+    if (response) process.stdout.write(JSON.stringify(response));
     process.exit(0);
   } catch {
     process.exit(0);
@@ -99,4 +116,4 @@ async function main() {
 /* istanbul ignore next */
 if (require.main === module) main();
 
-module.exports = { rewriteIfNeeded, rewriteSimple, buildResponse, FILTERED_CMDS, PIPE_SINKS };
+module.exports = { rewriteIfNeeded, rewriteSimple, buildResponse, coreCommand, respond, FILTERED_CMDS, PIPE_SINKS };

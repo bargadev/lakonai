@@ -18,7 +18,7 @@ function run(input) {
   const res = spawnSync('node', [HOOK], {
     input: JSON.stringify(input),
     encoding: 'utf8',
-    env: { ...process.env, LAKON_HOME },
+    env: { ...process.env, LAKON_HOME, HOME: LAKON_HOME },
   });
   return res.stdout;
 }

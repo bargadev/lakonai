@@ -299,6 +299,20 @@ reason it is not a SessionStart auto-rewrite.
   - `|` only into `head`/`tail` (`PIPE_SINKS`) — `| jq`, `| wc`, `| sh`,
     `| git apply` would consume filtered bytes;
   - `sed -i` / `--in-place` is skipped (no output to filter).
+  The decision itself lives in `src/hooks/permissions.js` (`respond()` in
+  bash-rewrite calls `decide()` on the command behind the cd prefix):
+  - `skip` when the command matches a user `deny`/`ask` rule (rules are
+    evaluated against the rewritten input, so `lakonai git push` would dodge
+    `Bash(git push:*)`), or under Codex for non-read-only commands;
+  - `allow` when `isReadOnly()` (ls/tree/cat/head/tail/grep/ag, rg without
+    `--pre`, find without -exec/-delete/-fprint…, `sed -n` print-only scripts,
+    read-only git subcommands and listing forms of branch/tag/remote/stash), or a
+    user `allow` rule matches, or `permission_mode === 'bypassPermissions'`;
+  - `rewrite` otherwise: `updatedInput` with NO `permissionDecision`, so the
+    prompt / auto mode decides on the original.
+  `loadRules({cwd})` merges `permissions.{allow,deny,ask}` from the user's
+  settings(.local).json and every `.claude/settings(.local).json` from cwd up.
+  `matchesRule` handles `Bash`, `Bash(*)`, legacy `prefix:*`, globs, exact.
   `FOO=1 pytest` still rewrites to nothing (first word is `FOO=1`).
   The same file is installed into Codex as a PreToolUse hook
   (`src/install/codex-hook.js`); Codex accepts the identical JSON.
@@ -395,7 +409,9 @@ started afterwards, never for one already pinned to the dead port.
 `index.js` orchestrates; `platforms.js` lists targets; `claude-hook.js` writes the
 hook launchers + merges `settings.json`; `codex-hook.js` writes
 `~/.codex/hooks/lakon-bash-rewrite.js` + merges `~/.codex/hooks.json`
-(PreToolUse, matcher `^Bash$`, timeout 10; Codex skips it until the user trusts
+(PreToolUse, matcher `^Bash$`, timeout 10; the launcher sets
+`LAKON_HOOK_AGENT=codex` so the hook rewrites read-only commands only — Codex
+rejects `updatedInput` without `allow`; Codex skips it until the user trusts
 it via `/hooks`; unparsable hooks.json is left untouched); `claude-commands.js` writes the
 `/lakonai:gain` slash command; `paths.js` resolves home via `homedir()` =
 `process.env.HOME || os.homedir()` (NOT bare `os.homedir()` — that ignores a
@@ -497,6 +513,7 @@ src/filters/defs.js         declarative filter definitions (data)
 src/filters/auto.js         conservative auto-learned filter
 src/filters/utils.js        stripAnsi, truncateLines, dedupConsecutive, groupByDir
 src/learn.js                auto-learning (transcript → stats → promote), isLearnable
+src/hooks/permissions.js    what the rewrite hook may approve: isReadOnly, loadRules, matchesRule, decide
 src/shell.js                quote-aware lexer: topLevelOps, isSingleWord, splitCdPrefix
 src/tracking.js             log.jsonl (+ agent: detectAgent from CLAUDECODE/CODEX_*/GEMINI_CLI/LAKON_AGENT), gain report, byAgent
 src/install/codex-hook.js   Codex hooks.json + launcher (install/uninstall/installed)
