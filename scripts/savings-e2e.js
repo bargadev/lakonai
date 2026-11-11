@@ -152,7 +152,7 @@ const SCENARIOS = [
   { id: 'git-status', label: 'git status', cmd: 'git', args: ['status'], minSaved: 30, mustKeep: ['mod0.js', 'tmp/'] },
   { id: 'find', label: 'find . -type f', cmd: 'find', args: ['.', '-type', 'f', '-not', '-path', './.git/*'], minSaved: 25, mustKeep: ['mod9.js'] },
   { id: 'ls', label: 'ls -la src/api', cmd: 'ls', args: ['-la', 'src/api'], minSaved: 30, mustKeep: ['mod9.js'] },
-  { id: 'grep', label: 'grep -rn transform src', cmd: 'grep', args: ['-rn', 'transform', 'src'], minSaved: 50, mustKeep: ['src/ui/mod0.js', 'more matches (tighten the pattern)'] },
+  { id: 'grep', label: 'grep -rn transform src', cmd: 'grep', args: ['-rn', 'transform', 'src'], minSaved: 50, mustKeep: ['transform(value', 'more matches (tighten the pattern)'] },
   { id: 'make', label: 'make', cmd: 'make', args: ['-s'], minSaved: 10, mustKeep: ["warning: unused variable 'total'"] },
   { id: 'sed-read', label: "sed -n '1,60p' file", cmd: 'sed', args: ['-n', '1,60p', 'src/core/mod3.js'], minSaved: 0, mustKeep: ['coreHandler3_7'] },
   // The agent path: before 1.4 the hook skipped every `cd … &&` command.
