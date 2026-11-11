@@ -17,6 +17,18 @@ function logPath() {
   return path.join(dataDir(), 'log.jsonl');
 }
 
+// Which agent ran the command. Every agent spawns its shell with its own
+// marker: Claude Code sets CLAUDECODE=1; Codex CLI sets CODEX_THREAD_ID /
+// CODEX_TOOL_CALL_ID (CODEX_SANDBOX* under its sandbox); Gemini CLI sets
+// GEMINI_CLI=1. LAKON_AGENT overrides, for agents with no marker.
+function detectAgent(env = process.env) {
+  if (env.LAKON_AGENT) return String(env.LAKON_AGENT);
+  if (env.CLAUDECODE === '1') return 'claude';
+  if (env.CODEX_THREAD_ID || env.CODEX_TOOL_CALL_ID || env.CODEX_SANDBOX || env.CODEX_SANDBOX_NETWORK_DISABLED) return 'codex';
+  if (env.GEMINI_CLI === '1') return 'gemini';
+  return 'other';
+}
+
 function record({ cmd, args, rawTokens, filteredTokens }) {
   if (process.env.LAKON_NO_TRACK === '1') return;
   try {
@@ -28,6 +40,7 @@ function record({ cmd, args, rawTokens, filteredTokens }) {
       raw: rawTokens,
       out: filteredTokens,
       saved: Math.max(0, rawTokens - filteredTokens),
+      agent: detectAgent(),
     };
     fs.appendFileSync(logPath(), JSON.stringify(entry) + '\n');
     /* istanbul ignore next */
@@ -112,6 +125,22 @@ function responseStats(entries) {
   };
 }
 
+// Savings per agent. Entries written before the agent field existed are
+// grouped as 'unknown' rather than guessed.
+function byAgent(entries) {
+  const map = new Map();
+  for (const e of entries) {
+    if (isSessionEntry(e)) continue;
+    const k = e.agent || 'unknown';
+    if (!map.has(k)) map.set(k, { agent: k, calls: 0, raw: 0, saved: 0 });
+    const acc = map.get(k);
+    acc.calls += 1;
+    acc.raw += e.raw || 0;
+    acc.saved += e.saved || 0;
+  }
+  return [...map.values()].sort((a, b) => b.saved - a.saved);
+}
+
 function pct(saved, raw) {
   if (!raw) return 0;
   return Math.round((saved / raw) * 100);
@@ -177,6 +206,12 @@ function report() {
     );
   }
 
+  const agents = byAgent(entries).filter((a) => a.agent !== 'unknown');
+  if (agents.length) {
+    lines.push('');
+    lines.push('  ' + dim('by agent: ') + agents.map((a) => `${a.agent} ${green(tok(a.saved))} ${dim(`(${pct(a.saved, a.raw)}%)`)}`).join(dim(' · ')));
+  }
+
   const top = byCommand(entries).slice(0, 5);
   if (top.length) {
     lines.push('');
@@ -191,4 +226,4 @@ function reset() {
   catch { return false; }
 }
 
-module.exports = { record, report, reset, readEntries, logPath, responseStats };
+module.exports = { record, report, reset, readEntries, logPath, responseStats, detectAgent, byAgent };

@@ -38,6 +38,7 @@ function compileDef(def) {
     headLines: def.headLines || null,
     tailLines: def.tailLines || null,
     maxLines: def.maxLines || null,
+    pinLines: (def.pinLines || []).map((p) => new RegExp(p)),
     onEmpty: def.onEmpty != null ? def.onEmpty : '',
     filterStderr: !!def.filterStderr,
   };
@@ -87,6 +88,14 @@ function applyDef(def, raw) {
       .join('\n');
   }
 
+  // A line cap keeps the head, but a build log puts its verdict at the end.
+  // Lines matching pinLines survive any cap: they are re-appended after the
+  // truncation marker, in order, so a warning on line 400 is never cut.
+  const cap = def.headLines || (!def.tailLines && def.maxLines) || null;
+  const pinned = cap && def.pinLines.length
+    ? text.split('\n').slice(cap).filter((l) => def.pinLines.some((re) => re.test(l)))
+    : [];
+
   if (def.headLines) {
     text = truncateLines(text, def.headLines);
   } else if (def.tailLines) {
@@ -98,6 +107,7 @@ function applyDef(def, raw) {
   }
 
   if (def.maxLines) text = truncateLines(text, def.maxLines);
+  if (pinned.length) text += '\n' + pinned.join('\n');
 
   return text.trim() === '' ? def.onEmpty : text;
 }

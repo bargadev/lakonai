@@ -55,6 +55,7 @@ module.exports = [
     match: '^make\\b',
     stripLines: ['^make\\[\\d+\\]:', '^\\s*$', '^Nothing to be done'],
     maxLines: 60,
+    pinLines: ['\\b(error|warning|Error|Warning|ERROR|WARNING|undefined reference)\\b', '^make(\\[\\d+\\])?: \\*\\*\\*'],
     onEmpty: 'make: ok',
   },
   {

@@ -20,7 +20,7 @@
   <img src="https://img.shields.io/badge/node-%E2%89%A518-0F0F0F" alt="node ≥18" />
   <img src="https://img.shields.io/badge/deps-0-0F0F0F" alt="zero dependencies" />
   <img src="https://img.shields.io/badge/agents-6-0F0F0F" alt="6 AI agents" />
-  <img src="https://img.shields.io/badge/tests-998-0F0F0F" alt="998 tests" />
+  <img src="https://img.shields.io/badge/tests-1075-0F0F0F" alt="1075 tests" />
 </p>
 
 <p align="center">
@@ -38,6 +38,22 @@
 ---
 
 ## Real savings, measured
+
+### End-to-end, reproducible
+
+<p align="center">
+  <img src="./docs/assets/savings-e2e.svg" width="820" alt="lakonai e2e: 86.3% fewer tokens overall across 10 real commands on a fixture repo — grep 96.9%, git diff 88.8%, git log 86.6%, ls 80%, git status 36.2%, find 31.5%, make 15%, sed read 0%" />
+</p>
+
+`tests/savings-e2e.test.js` builds a git repository on disk and runs each command
+twice — raw, and through the real CLI (or the real PreToolUse hook + `sh` for the
+`cd … &&` row). CI fails if a command drops below its floor **or** loses a line
+that matters (the newest commit, the changed lines, the build warning). File
+reads (`sed -n`, `cat`) are content the agent asked for, so they stay ~untouched.
+Numbers and method: [docs/benchmark-e2e.md](./docs/benchmark-e2e.md). Regenerate the
+chart with `npm run bench:e2e`.
+
+### From live projects
 
 All numbers from live projects using `lakonai@1.1.1`.
 
@@ -248,7 +264,7 @@ Query it: lakonai peek 30930a0c --grep "error"
 
 | Feature | Claude Code | Codex | Cursor / Windsurf / Cline | Gemini |
 |---------|:-----------:|:-----:|:-------------------------:|:------:|
-| CLI filters | ✅ hook | ✅ shim | ✅ shim | ✅ shim |
+| CLI filters | ✅ hook | ✅ hook ¹ | ✅ shim | ✅ shim |
 | Read/Grep guard | ✅ | ✅ shim | ✅ shim | ✅ shim |
 | Overflow sandbox | ✅ | — | — | — |
 | Proxy compression | ✅ | — | — | — |
@@ -257,6 +273,10 @@ Query it: lakonai peek 30930a0c --grep "error"
 | MCP catalog compression | ✅ | — | — | — |
 | Auto-learn new commands | ✅ | ✅ | ✅ | ✅ |
 | Answer budget (per-turn) | ✅ hook | ✅ proxy | ✅ proxy | ✅ proxy |
+
+¹ Codex CLI 0.16x+ runs the same PreToolUse hook from `~/.codex/hooks.json`. Codex skips new hooks until you trust them once with `/hooks`.
+
+The Bash hook rewrites `cmd` and `cd <dir> && cmd` to go through `lakonai`. It answers "allow", so it only rewrites a command it can fully see: chains (`&&`, `;`, `||`), `$(…)`, redirects into files, and pipes into anything but `head`/`tail` run unchanged through your normal permission rules.
 
 **Primary target: Claude Code.** The proxy and graph layers intercept the Anthropic protocol and are Claude-Code-specific. CLI filters and the universal shim work on every agent. Every install is idempotent and reversible.
 
@@ -347,16 +367,16 @@ Input is measured and deterministic. Output is estimated by your local AI CLI (n
 
 ## Test suite
 
-998 tests across 61 suites — all passing, no mocks on I/O boundaries.
+1075 tests across 68 suites — all passing, no mocks on I/O boundaries.
 
 | Type | Suites | Tests |
 |------|--------|-------|
-| Unit | 14 | 194 |
-| Integration (module + real FS / real HTTP) | 32 | 614 |
-| E2E / CLI (spawn + real process) | 15 | 190 |
-| **Total** | **61** | **998** |
+| Unit | 16 | 218 |
+| Integration (module + real FS / real HTTP) | 36 | 642 |
+| E2E / CLI (spawn + real process) | 16 | 215 |
+| **Total** | **68** | **1075** |
 
-Coverage: **90% statements · 85% branches · 93% functions** (gate: 80% global; target 100% per new file)
+Coverage: **90% statements · 86% branches · 93% functions** (gate: 80% global; target 100% per new file)
 
 Branch ceiling is ~90% — the remaining gaps are canvas-native rendering, platform-specific `fs.watch` fallback, and the HTTPS transport branch (all marked `/* istanbul ignore next */` with justification).
 

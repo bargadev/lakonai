@@ -12,12 +12,16 @@ const learn = require('../learn');
 const { countTokensApprox } = require('./utils');
 
 const HANDLERS = {
-  git: (args, raw) => git.filter(args[0], raw),
+  git: (args, raw) => git.filter(git.subcommand(args), raw),
   ls: (_args, raw) => ls.filter(raw),
   tree: (_args, raw) => ls.filter(raw),
   cat: (_args, raw) => cat.filter(raw),
   head: (_args, raw) => cat.filter(raw, { maxLines: 50 }),
   tail: (_args, raw) => cat.filter(raw, { maxLines: 50 }),
+  // `sed -n 'a,bp' file` is how Codex and Claude read a slice of a file. The
+  // range is the agent's explicit choice, so never truncate it (the output
+  // spill still parks a runaway read); only ANSI and blank runs go.
+  sed: (_args, raw) => cat.filter(raw, { maxLines: Infinity }),
   grep: (_args, raw) => grep.filter(raw),
   rg: (_args, raw) => grep.filter(raw),
   ag: (_args, raw) => grep.filter(raw),
