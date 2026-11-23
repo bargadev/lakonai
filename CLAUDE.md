@@ -58,10 +58,16 @@ release:
 2. Add a matching `CHANGELOG.md` entry under a new `## [x.y.z] - YYYY-MM-DD` heading.
 3. Open a PR and merge it (main is protected — PRs only).
 
-On merge, the **Publish to npm** action publishes when `package.json` carries a
-new version, no-ops when the version is unchanged, and **fails** if the version
-was bumped to one that already exists on npm. Never bump the version without a
-CHANGELOG entry in the same PR.
+On merge, the **Publish to npm** action publishes when the `package.json` version
+is not on npm yet, no-ops when it is already there and unchanged, and **fails**
+if the version was bumped to one that already exists on npm. Because it compares
+against npm, a merge that follows a failed publish releases the missing version.
+Never bump the version without a CHANGELOG entry in the same PR.
+
+Auth is **npm Trusted Publishing** (OIDC, `id-token: write`): npmjs.com trusts
+`bargadev/lakonai` + `.github/workflows/publish.yml`. There is no `NPM_TOKEN`
+secret. Do not add one back, and do not rename the workflow file without updating
+the trusted publisher on npmjs.com (package → Settings → Trusted Publisher).
 
 ## Test types — every new feature needs all three layers
 

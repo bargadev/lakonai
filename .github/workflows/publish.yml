@@ -2,15 +2,23 @@ name: Publish to npm
 
 # Runs on every push to main. Because main is protected (PRs only), this fires
 # when a PR is merged. Release model: merge + CHANGELOG, no tags.
-#   - version unchanged from the previous commit -> no-op (ordinary merge)
-#   - version bumped to a number not yet on npm   -> publish
-#   - version bumped to a number ALREADY on npm   -> fail (mistake, must error)
+#   - package.json version not on npm yet           -> publish
+#   - version already on npm, unchanged from HEAD^  -> no-op (ordinary merge)
+#   - version bumped to a number ALREADY on npm     -> fail (mistake, must error)
+# Comparing against npm, not only HEAD^, lets a merge after a failed publish
+# release the version that never reached the registry.
+#
+# Auth is npm Trusted Publishing (OIDC): npmjs.com trusts this repo + this
+# workflow file, so there is no NPM_TOKEN to expire or leak. It needs
+# `id-token: write` and npm >= 11.5.1. Renaming this file breaks publishing
+# until the trusted publisher on npmjs.com is updated to the new name.
 on:
   push:
     branches: [main]
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   publish:
@@ -25,25 +33,26 @@ jobs:
           node-version: 20
           registry-url: https://registry.npmjs.org
 
+      - name: npm with Trusted Publishing support
+        run: npm install -g npm@^11.5.1
+
       - run: npm ci
 
       - run: npm test
 
-      - name: Publish when the version was bumped
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish when the version is not on npm yet
         run: |
           NAME=$(node -p "require('./package.json').name")
           CURRENT=$(node -p "require('./package.json').version")
           git show HEAD^:package.json > /tmp/prev.json 2>/dev/null || echo '{}' > /tmp/prev.json
           PREVIOUS=$(node -p "require('/tmp/prev.json').version || ''")
 
-          if [ "$CURRENT" = "$PREVIOUS" ]; then
-            echo "::notice::Version unchanged ($CURRENT) — nothing to release."
-          elif npm view "$NAME@$CURRENT" version >/dev/null 2>&1; then
-            echo "::error::package.json was bumped to $CURRENT, but $NAME@$CURRENT is already on npm. Bump to a new version."
-            exit 1
-          else
+          if ! npm view "$NAME@$CURRENT" version >/dev/null 2>&1; then
             echo "Publishing $NAME@$CURRENT"
             npm publish --access public
+          elif [ "$CURRENT" = "$PREVIOUS" ]; then
+            echo "::notice::$NAME@$CURRENT is already on npm and the version is unchanged — nothing to release."
+          else
+            echo "::error::package.json was bumped to $CURRENT, but $NAME@$CURRENT is already on npm. Bump to a new version."
+            exit 1
           fi
