@@ -87,9 +87,18 @@ this to PreToolUse.
 The hook input carries the result in **`tool_response`** (`tool_output` is
 accepted as a fallback), and it is a **string for some tools and an object for
 others** — `extractText()` prefers a real content field (`content`, `file.content`,
-`output`, `stdout`) over stringifying the wrapper, which would park JSON noise
-instead of the payload. `isAlreadyDigest()` stops (2) from re-parking what (1)
-already parked.
+`output`, `stdout`, `result`) over stringifying the wrapper, which would park JSON
+noise instead of the payload. `isAlreadyDigest()` stops (2) from re-parking what
+(1) already parked.
+
+**`updatedToolOutput` must keep the tool's own output shape.** Claude Code runs it
+through the tool's `outputSchema` and, on mismatch, discards it ("does not match
+Bash's output shape; using original output"). A bare string is rejected for Bash
+(`{stdout, stderr, interrupted, ...}`), Read (`{file: {content}}`), Grep and
+WebFetch. `replaceText()` swaps only the text field `extractText()` read (both use
+`TEXT_FIELDS`) and spreads every other key; when there is no single text field
+(stringified fallback, Task's content array) it returns null and the hook leaves
+the result alone — checked before `sandbox.spill`, so no orphan spill is written.
 
 **The digest reports lines + KB, never a token estimate.** `countTokensApprox()`
 splits on whitespace and undercounts a real tokenizer by ~35% on prose (more on

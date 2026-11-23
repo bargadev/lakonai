@@ -6,6 +6,19 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-11-23
+
+### Fixed
+- **The PostToolUse spill now actually replaces large output.** `output-spill.js`
+  returned the digest as a bare string, but Claude Code validates
+  `updatedToolOutput` against the tool's output schema, so every spill of Bash,
+  Read, Grep and WebFetch output was discarded ("PostToolUse hook returned
+  updatedToolOutput that does not match Bash's output shape; using original
+  output") and the full output reached the context. The digest now replaces only
+  the text field (`stdout`, `file.content`, `content`, `output`, `result`) and
+  every other field is kept. Results with no single text field are left
+  untouched instead of being replaced with the wrong shape.
+
 ## [1.5.0] - 2026-11-11
 
 ### Security

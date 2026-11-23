@@ -18,6 +18,7 @@ describe('extractText', () => {
   test('{content} and {stdout} shapes', () => {
     assert.equal(hook.extractText({ tool_response: { content: 'a' } }), 'a');
     assert.equal(hook.extractText({ tool_response: { stdout: 'b' } }), 'b');
+    assert.equal(hook.extractText({ tool_response: { code: 200, result: 'c' } }), 'c');
   });
 
   test('falls back to tool_output when tool_response is absent', () => {
@@ -31,6 +32,48 @@ describe('extractText', () => {
   test('missing result is null, not a throw', () => {
     assert.equal(hook.extractText({}), null);
     assert.equal(hook.extractText({ tool_response: null }), null);
+  });
+});
+
+describe('replaceText', () => {
+  const D = 'lakonai: 4000 lines / 120KB parked in sandbox abc123';
+
+  // The bug: a bare string came back for Bash and Claude Code rejected it with
+  // "does not match Bash's output shape; using original output".
+  test("Bash keeps its {stdout, stderr, interrupted, isImage} shape", () => {
+    const r = { stdout: big, stderr: 'warn', interrupted: false, isImage: false };
+    assert.deepEqual(hook.replaceText({ tool_response: r }, D), { ...r, stdout: D });
+    assert.equal(r.stdout, big, 'original response is not mutated');
+  });
+
+  test('Read keeps {type, file:{filePath, content, ...}}', () => {
+    const r = { type: 'text', file: { filePath: '/a', content: big, numLines: 4000 } };
+    assert.deepEqual(hook.replaceText({ tool_response: r }, D), {
+      type: 'text',
+      file: { filePath: '/a', content: D, numLines: 4000 },
+    });
+  });
+
+  test('Grep {content} and WebFetch {result} keep their other fields', () => {
+    assert.deepEqual(hook.replaceText({ tool_response: { mode: 'content', content: big } }, D), {
+      mode: 'content',
+      content: D,
+    });
+    assert.deepEqual(hook.replaceText({ tool_response: { code: 200, result: big } }, D), {
+      code: 200,
+      result: D,
+    });
+  });
+
+  test('string result stays a string', () => {
+    assert.equal(hook.replaceText({ tool_response: big }, D), D);
+    assert.equal(hook.replaceText({ tool_output: big }, D), D);
+  });
+
+  test('no single text field means no replacement, not a wrong shape', () => {
+    assert.equal(hook.replaceText({ tool_response: { weird: 1 } }, D), null);
+    assert.equal(hook.replaceText({ tool_response: { content: [{ type: 'text' }] } }, D), null);
+    assert.equal(hook.replaceText({}, D), null);
   });
 });
 
