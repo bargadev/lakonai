@@ -20,7 +20,7 @@
   <img src="https://img.shields.io/badge/node-%E2%89%A518-0F0F0F" alt="node ≥18" />
   <img src="https://img.shields.io/badge/deps-0-0F0F0F" alt="zero dependencies" />
   <img src="https://img.shields.io/badge/agents-6-0F0F0F" alt="6 AI agents" />
-  <img src="https://img.shields.io/badge/tests-1075-0F0F0F" alt="1075 tests" />
+  <img src="https://img.shields.io/badge/tests-1165-0F0F0F" alt="1165 tests" />
 </p>
 
 <p align="center">
@@ -377,7 +377,7 @@ Input is measured and deterministic. Output is estimated by your local AI CLI (n
 
 ## Test suite
 
-1075 tests across 68 suites — all passing, no mocks on I/O boundaries.
+1165 tests across 69 suites — all passing, no mocks on I/O boundaries.
 
 | Type | Suites | Tests |
 |------|--------|-------|

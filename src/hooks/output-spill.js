@@ -19,21 +19,61 @@ const { countTokensApprox } = require('../filters');
 // results are short, and TodoWrite & friends are structural.
 const SPILLABLE_TOOLS = new Set(['Bash', 'Read', 'Grep', 'Glob', 'WebFetch', 'Task']);
 
-// The result arrives as a string or as a structured object depending on the tool.
+// The result arrives as a string or as a structured object depending on the tool:
+// Bash {stdout, stderr, interrupted, ...}, Read {file: {content}}, Grep {content},
+// WebFetch {result}. Each entry reads the payload and rebuilds the SAME shape
+// around a replacement; Claude Code drops an updatedToolOutput whose shape differs
+// from the tool's own ("does not match Bash's output shape; using original output").
+const TEXT_FIELDS = [
+  { get: (r) => r.content, set: (r, v) => ({ ...r, content: v }) },
+  { get: (r) => r.file?.content, set: (r, v) => ({ ...r, file: { ...r.file, content: v } }) },
+  { get: (r) => r.output, set: (r, v) => ({ ...r, output: v }) },
+  { get: (r) => r.stdout, set: (r, v) => ({ ...r, stdout: v }) },
+  { get: (r) => r.result, set: (r, v) => ({ ...r, result: v }) },
+];
+
+function rawResponse(data) {
+  return data.tool_response !== undefined ? data.tool_response : data.tool_output;
+}
+
+// First field holding a string. Mirrors the old `??` chain: a present but
+// non-string field (Task's content array) stops the search, so the caller falls
+// back to stringifying instead of picking a later, unrelated field.
+function textField(r) {
+  for (const f of TEXT_FIELDS) {
+    const v = f.get(r);
+    if (v != null) return typeof v === 'string' ? f : null;
+  }
+  return null;
+}
+
 function extractText(data) {
-  const r = data.tool_response !== undefined ? data.tool_response : data.tool_output;
+  const r = rawResponse(data);
   if (r == null) return null;
   if (typeof r === 'string') return r;
-  // Read returns {file: {content}}; others vary. Prefer a real content field over
-  // stringifying the wrapper, which would park JSON noise instead of the payload.
+  // Prefer a real content field over stringifying the wrapper, which would park
+  // JSON noise instead of the payload.
   if (typeof r === 'object') {
-    const content = r.content ?? r.file?.content ?? r.output ?? r.stdout;
-    if (typeof content === 'string') return content;
+    const f = textField(r);
+    if (f) return f.get(r);
     try {
       return JSON.stringify(r);
     } catch {
       return null;
     }
+  }
+  return null;
+}
+
+// The tool result with its payload swapped for `digest`, in the tool's own shape.
+// null when the payload has no single text field to swap (stringified fallback):
+// leaving the result alone beats a replacement Claude Code will reject.
+function replaceText(data, digest) {
+  const r = rawResponse(data);
+  if (typeof r === 'string') return digest;
+  if (r && typeof r === 'object') {
+    const f = textField(r);
+    if (f) return f.set(r, digest);
   }
   return null;
 }
@@ -72,6 +112,9 @@ async function main() {
     const text = extractText(data);
     if (!decide({ toolName, text, threshold: sandbox.spillThreshold() })) process.exit(0);
 
+    // Check before parking, so an unreplaceable result leaves no orphan spill.
+    if (replaceText(data, '') === null) process.exit(0);
+
     const label = toolName === 'Bash' ? data.tool_input?.command || 'Bash' : toolName;
     const parked = sandbox.spill({ cmd: label, args: [], exitCode: null, text });
     // Disk failure must leave the original result untouched, not blank it.
@@ -81,7 +124,7 @@ async function main() {
       JSON.stringify({
         hookSpecificOutput: {
           hookEventName: 'PostToolUse',
-          updatedToolOutput: parked.digest,
+          updatedToolOutput: replaceText(data, parked.digest),
         },
       })
     );
@@ -95,4 +138,4 @@ async function main() {
 /* istanbul ignore next */
 if (require.main === module) main();
 
-module.exports = { extractText, isAlreadyDigest, decide, SPILLABLE_TOOLS };
+module.exports = { extractText, replaceText, isAlreadyDigest, decide, SPILLABLE_TOOLS };
