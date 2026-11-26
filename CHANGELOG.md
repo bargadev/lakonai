@@ -6,6 +6,14 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-11-26
+
+### Added
+- **`lakonai gain --share`** (also `stats --share`) prints a short plain-text
+  card of your savings, ready to post: tokens saved, % smaller, command count,
+  agents, days of use, the top 3 commands, and the install line. It carries only
+  totals and command names — never args, paths or anything from your projects.
+
 ## [1.5.1] - 2026-11-23
 
 ### Fixed

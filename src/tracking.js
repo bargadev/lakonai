@@ -221,9 +221,39 @@ function report() {
   return lines.join('\n') + '\n';
 }
 
+// A plain-text card for posting your savings (`lakonai gain --share`). No
+// color, no args, no paths: only totals, the command names and the agent -
+// nothing from the user's projects leaves the log. Short enough for one post.
+const AGENT_NAMES = { claude: 'Claude Code', codex: 'Codex', gemini: 'Gemini CLI' };
+const REPO_URL = 'https://github.com/bargadev/lakonai';
+
+function shareText(entries, now = Date.now()) {
+  const all = aggregate(entries);
+  if (!all.calls) return null;
+  const first = entries.reduce((m, e) => (!isSessionEntry(e) && e.t && e.t < m ? e.t : m), now);
+  const days = Math.max(1, Math.ceil((now - first) / DAY_MS));
+  const agents = byAgent(entries)
+    .map((a) => AGENT_NAMES[a.agent])
+    .filter(Boolean);
+  const where = agents.length ? ` in ${agents.join(' + ')}` : '';
+  const top = byCommand(entries).filter((c) => c.saved > 0).slice(0, 3);
+  const lines = [
+    `lakonai saved me ${tok(all.saved)} (${pct(all.saved, all.raw)}% smaller) across ` +
+      `${all.calls.toLocaleString('en-US')} command${all.calls === 1 ? '' : 's'}${where}, ${days} day${days === 1 ? '' : 's'}.`,
+  ];
+  if (top.length) lines.push('Top: ' + top.map((c) => `${c.cmd} ${fmt(c.saved)}`).join(' · '));
+  lines.push(`npm i -g lakonai → ${REPO_URL}`);
+  return lines.join('\n') + '\n';
+}
+
+function shareReport() {
+  return shareText(readEntries()) ||
+    'lakonai: no usage recorded yet. Run a few commands through `lakonai` first.\n';
+}
+
 function reset() {
   try { fs.unlinkSync(logPath()); return true; }
   catch { return false; }
 }
 
-module.exports = { record, report, reset, readEntries, logPath, responseStats, detectAgent, byAgent };
+module.exports = { record, report, shareText, shareReport, reset, readEntries, logPath, responseStats, detectAgent, byAgent };

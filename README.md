@@ -20,7 +20,7 @@
   <img src="https://img.shields.io/badge/node-%E2%89%A518-0F0F0F" alt="node ≥18" />
   <img src="https://img.shields.io/badge/deps-0-0F0F0F" alt="zero dependencies" />
   <img src="https://img.shields.io/badge/agents-6-0F0F0F" alt="6 AI agents" />
-  <img src="https://img.shields.io/badge/tests-1165-0F0F0F" alt="1165 tests" />
+  <img src="https://img.shields.io/badge/tests-1178-0F0F0F" alt="1178 tests" />
 </p>
 
 <p align="center">
@@ -91,6 +91,7 @@ All numbers from live projects using `lakonai@1.1.1`.
 **Typical coding session:** ~53% savings from proxy alone, ~75% with graph read-guard.
 
 `lakonai gain` shows your own numbers. `/lakonai:stats` shows all layers at once.
+`lakonai gain --share` turns them into a short card you can post.
 
 ---
 
@@ -318,7 +319,7 @@ After `lakonai install`, these are available in Claude Code:
 | `lakonai compress-memory <file>` | Shrink a memory file via your local AI CLI |
 | `lakonai peek [id]` | Read output parked in sandbox (`--grep/--offset/--limit`) |
 | `lakonai depth [on\|off\|status]` | Answer budget: `on` buys one long reply, `off` cancels, `status` reports |
-| `lakonai gain` | Token savings across all measured fronts |
+| `lakonai gain [--share]` | Token savings across all measured fronts; `--share` prints a plain-text card to post (totals and command names only — no args or paths) |
 | `lakonai inspect <cmd>` | Debug what filter applies to a command |
 | `lakonai mcp [wrap\|unwrap]` | MCP catalog compression status/lifecycle |
 | `lakonai proxy [start\|stop\|restart]` | Compression proxy status/lifecycle |
@@ -377,7 +378,7 @@ Input is measured and deterministic. Output is estimated by your local AI CLI (n
 
 ## Test suite
 
-1165 tests across 69 suites — all passing, no mocks on I/O boundaries.
+1178 tests across 70 suites — all passing, no mocks on I/O boundaries.
 
 | Type | Suites | Tests |
 |------|--------|-------|
