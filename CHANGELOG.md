@@ -6,6 +6,22 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-11-26
+
+### Added
+- **Claude Code plugin.** `/plugin install lakonai --marketplace bargadev/lakonai`
+  installs lakonai with no npm: the hooks (shell filters, read/grep guards,
+  overflow sandbox, answer budget, auto-learning), the terse rule (injected at
+  session start) and the `/lakonai:*` commands. The plugin's hooks rewrite to
+  its own CLI shim by absolute path, and SessionStart puts that shim on the
+  session's PATH. When `lakonai install` already registered a hook, the plugin's
+  copy stands down, so the two never fire together. Proxy, MCP compression and
+  the non-Claude platforms still come with the npm install.
+
+### Changed
+- `assets/logo.svg` no longer uses an embedded `<style>` (the plugin directory
+  rejects icons with one): a dark disc with a light mark, legible on both themes.
+
 ## [1.6.0] - 2026-11-26
 
 ### Added

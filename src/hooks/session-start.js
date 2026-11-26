@@ -22,10 +22,9 @@ function findGitRoot(dir) {
 // Fire-and-forget — never blocks the session start.
 function triggerGraphBuild(gitRoot) {
   try {
-    const lakonai = process.execPath === process.argv[0]
-      ? 'lakonai'
-      : process.execPath;
-    spawn('lakonai', ['graph', 'build', gitRoot], {
+    const { cliSpawn } = require('../plugin-runtime');
+    const cli = cliSpawn(['graph', 'build', gitRoot]);
+    spawn(cli.file, cli.args, {
       detached: true,
       stdio: 'ignore',
       env: { ...process.env },
@@ -50,6 +49,15 @@ async function main() {
     await readStdin();
 
     const parts = [];
+
+    // Plugin install: no `lakonai install` ran, so put the CLI on the Bash
+    // tool's PATH and deliver the rule that install would have written.
+    if (process.env.LAKON_PLUGIN_ROOT) {
+      try {
+        const { extendPath, pluginRule, readRule } = require('../plugin-runtime');
+        parts.push(pluginRule(readRule(), { onPath: extendPath() }));
+      } catch { /* best-effort */ }
+    }
 
     const update = await checkForUpdate();
     if (update) parts.push(formatNotice(update));

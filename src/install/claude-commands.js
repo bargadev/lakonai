@@ -114,4 +114,4 @@ function uninstallCommands(home) {
   return removed;
 }
 
-module.exports = { installCommands, uninstallCommands, commandsDir };
+module.exports = { installCommands, uninstallCommands, commandsDir, COMMANDS };

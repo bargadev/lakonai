@@ -4,6 +4,7 @@
 const { supportedFirstWords } = require('../filters');
 const { topLevelOps, splitCdPrefix } = require('../shell');
 const permissions = require('./permissions');
+const { cliPrefix } = require('../plugin-runtime');
 
 const FILTERED_CMDS = supportedFirstWords();
 
@@ -27,7 +28,7 @@ function isNoOutputForm(firstWord, rest) {
 // chains another command (`&&`, `;`, `||`, `&`, newline), substitutes one
 // (`$(…)`, backticks), writes the filtered output to a file (`>`), or pipes it
 // into a consumer other than head/tail is left alone.
-function rewriteSimple(command) {
+function rewriteSimple(command, prefix = 'lakonai') {
   const firstWord = command.split(/\s+/)[0];
   if (!FILTERED_CMDS.has(firstWord)) return null;
   if (isNoOutputForm(firstWord, command.slice(firstWord.length))) return null;
@@ -39,22 +40,24 @@ function rewriteSimple(command) {
     const sink = command.slice(i + 1).trim().split(/\s+/)[0];
     if (!PIPE_SINKS.has(sink)) return null;
   }
-  return `lakonai ${command}`;
+  return `${prefix} ${command}`;
 }
 
-function rewriteIfNeeded(command) {
+// prefix: how to invoke the CLI — `lakonai`, or the plugin's absolute shim
+// path when running as a Claude Code plugin (no npm install, nothing on PATH).
+function rewriteIfNeeded(command, prefix = 'lakonai') {
   if (typeof command !== 'string') return null;
   const trimmed = command.trim();
   if (!trimmed) return null;
-  if (/^lakonai(\s|$)/.test(trimmed)) return null;
+  if (/^lakonai(\s|$)/.test(trimmed) || trimmed.startsWith(prefix + ' ')) return null;
   // `cd <dir> && cmd` is the dominant shape agents emit. Rewrite the command
   // behind the prefix; `cd` itself has nothing to filter.
   const cd = splitCdPrefix(trimmed);
   if (cd) {
-    const inner = rewriteIfNeeded(cd.rest);
+    const inner = rewriteIfNeeded(cd.rest, prefix);
     return inner ? `cd ${cd.dir} ${cd.op} ${inner}` : null;
   }
-  return rewriteSimple(trimmed);
+  return rewriteSimple(trimmed, prefix);
 }
 
 // The PreToolUse answer. With `allow` the call skips the permission prompt;
@@ -79,7 +82,7 @@ function coreCommand(command) {
 function respond(data, { env = process.env, rules } = {}) {
   if (!data || data.tool_name !== 'Bash') return null;
   const command = data.tool_input && data.tool_input.command;
-  const rewritten = rewriteIfNeeded(command);
+  const rewritten = rewriteIfNeeded(command, cliPrefix(env));
   if (!rewritten) return null;
   const decision = permissions.decide({
     core: coreCommand(command),

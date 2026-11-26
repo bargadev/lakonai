@@ -1,12 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" role="img" aria-label="lakonai">
   <title>lakonai</title>
-  <desc>Spartan lambda inside a circular shield — symbol of Lakonía, ancient Sparta.</desc>
-  <style>
-    .mark { stroke: #0F0F0F; fill: none; }
-    @media (prefers-color-scheme: dark) {
-      .mark { stroke: #F5F5F5; }
-    }
-  </style>
-  <circle class="mark" cx="120" cy="120" r="106" stroke-width="5"/>
-  <path class="mark" d="M 72 178 L 120 60 L 168 178" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="120" cy="120" r="112" fill="#0F0F0F"/>
+  <circle cx="120" cy="120" r="96" fill="none" stroke="#F5F5F5" stroke-width="10"/>
+  <path d="M 72 178 L 120 60 L 168 178" fill="none" stroke="#F5F5F5" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

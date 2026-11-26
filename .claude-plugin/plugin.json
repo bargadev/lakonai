@@ -1,0 +1,29 @@
+{
+  "name": "lakonai",
+  "version": "1.7.0",
+  "description": "Save context tokens in Claude Code: filters shell output (git, grep, find, test runners, linters, docker…), blocks lockfile and vendored-dir reads, parks oversized tool output on disk, and keeps answers terse.",
+  "author": {
+    "name": "bargadev",
+    "url": "https://github.com/bargadev"
+  },
+  "homepage": "https://github.com/bargadev/lakonai",
+  "repository": "https://github.com/bargadev/lakonai",
+  "license": "MIT",
+  "keywords": [
+    "tokens",
+    "context-window",
+    "hooks",
+    "output-filter",
+    "cli",
+    "token-savings"
+  ],
+  "commands": "./plugin/commands/",
+  "hooks": "./plugin/hooks.json",
+  "icon": "./assets/logo.svg",
+  "network": {
+    "hosts": [
+      "registry.npmjs.org",
+      "api.anthropic.com"
+    ]
+  }
+}

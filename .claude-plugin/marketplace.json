@@ -1,0 +1,20 @@
+{
+  "name": "lakonai",
+  "owner": {
+    "name": "bargadev",
+    "url": "https://github.com/bargadev"
+  },
+  "metadata": {
+    "description": "lakonai — save context tokens in Claude Code."
+  },
+  "plugins": [
+    {
+      "name": "lakonai",
+      "source": "./",
+      "description": "Filters shell output, guards file reads, parks oversized output and keeps answers terse.",
+      "version": "1.7.0",
+      "category": "productivity",
+      "homepage": "https://github.com/bargadev/lakonai"
+    }
+  ]
+}
