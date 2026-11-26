@@ -451,6 +451,12 @@ key). `measure()` runs each prompt twice — baseline vs the rule injected as a
 fallback otherwise) — and compares output tokens. Cached in `~/.lakon/output-bench.json`;
 `summaryLine()` renders it. Opt-out `LAKON_NO_OUTPUT_BENCH=1`.
 
+`gain --share` (or `stats --share`) short-circuits all of the above: it prints only
+`tracking.shareReport()` — a colorless 2–3 line card (saved tokens, %, command
+count, agents, days since the first entry, top 3 commands, install line + repo URL)
+and skips the output bench, the sample benchmark and the update check. It must
+never include `args` or paths: the card is meant to be posted publicly.
+
 **Baseline isolation (`callAgent({ ruleFree, cwd })`):** both arms must run rule-FREE
 so the baseline isn't polluted by the CLI auto-loading the installed terse rule (e.g.
 `~/.claude/CLAUDE.md`) — otherwise the delta collapses or goes negative. We isolate via
@@ -524,7 +530,7 @@ src/filters/utils.js        stripAnsi, truncateLines, dedupConsecutive, groupByD
 src/learn.js                auto-learning (transcript → stats → promote), isLearnable
 src/hooks/permissions.js    what the rewrite hook may approve: isReadOnly, loadRules, matchesRule, decide
 src/shell.js                quote-aware lexer: topLevelOps, isSingleWord, splitCdPrefix
-src/tracking.js             log.jsonl (+ agent: detectAgent from CLAUDECODE/CODEX_*/GEMINI_CLI/LAKON_AGENT), gain report, byAgent
+src/tracking.js             log.jsonl (+ agent: detectAgent from CLAUDECODE/CODEX_*/GEMINI_CLI/LAKON_AGENT), gain report, byAgent, shareText/shareReport (`gain --share` card: totals + cmd names + agent, never args/paths)
 src/install/codex-hook.js   Codex hooks.json + launcher (install/uninstall/installed)
 scripts/savings-e2e.js      e2e savings harness (fixture repo, real CLI + hook)
 scripts/savings-chart.js    renders docs/assets/savings-e2e.svg + docs/benchmark-e2e.md

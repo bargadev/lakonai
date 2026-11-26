@@ -55,7 +55,9 @@ Usage:
 
   lakonai gain               Show token savings - INPUT (shell output, measured)
                              AND OUTPUT (how much terser the model writes; measured
-                             weekly via your local AI CLI, no API key)
+                             weekly via your local AI CLI, no API key).
+                             --share prints a plain-text card of your totals to
+                             post anywhere (no paths or args included)
   lakonai mcp [cmd]          MCP catalog compression: status (default) | wrap |
                              unwrap. Wrapping edits ~/.claude.json, where Claude
                              Code keeps per-project session state, so it is
@@ -628,6 +630,10 @@ async function main() {
     return;
   }
   if (first === 'gain' || first === 'stats') {
+    if (rest.includes('--share')) {
+      process.stdout.write(tracking.shareReport());
+      return;
+    }
     process.stdout.write(tracking.report());
     // Output side: measure how much terser the model writes (weekly, TTY-only,
     // via the local AI CLI), then show it alongside the input savings.
