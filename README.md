@@ -14,6 +14,7 @@
 <p align="center"><em>Spartan replies for AI agents.</em></p>
 
 <p align="center">
+  <a href="https://lakon.fun"><img src="https://img.shields.io/badge/site-lakon.fun-0F0F0F" alt="lakon.fun" /></a>
   <a href="https://www.npmjs.com/package/lakonai"><img src="https://img.shields.io/npm/v/lakonai?color=0F0F0F&label=npm" alt="npm" /></a>
   <a href="https://github.com/bargadev/lakonai"><img src="https://img.shields.io/badge/GitHub-bargadev%2Flakonai-0F0F0F?logo=github" alt="GitHub repo" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-0F0F0F" alt="MIT" /></a>

@@ -1,6 +1,6 @@
 {
   "name": "lakonai",
-  "version": "1.7.1",
+  "version": "1.7.2",
   "description": "lakonai — save AI context tokens. Filters & compresses CLI output (git, ls, grep, find, test runners, lint/build, docker/kubectl/aws) before it reaches Claude Code, Codex, Cursor, Windsurf, Cline or Gemini — and learns to filter new commands automatically the more you use it.",
   "keywords": [
     "claude",
@@ -64,5 +64,6 @@
   },
   "devDependencies": {
     "jest": "^29.7.0"
-  }
+  },
+  "homepage": "https://lakon.fun"
 }
