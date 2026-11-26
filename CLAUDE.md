@@ -55,6 +55,8 @@ The version log lives in **`CHANGELOG.md`** — there are no git tags. To cut a
 release:
 
 1. On a branch, bump the version: `npm version <patch|minor|major> --no-git-tag-version`.
+   The `version` script regenerates the plugin manifests (`npm run build:plugin`)
+   so `.claude-plugin/*.json` carry the new version — commit them too.
 2. Add a matching `CHANGELOG.md` entry under a new `## [x.y.z] - YYYY-MM-DD` heading.
 3. Open a PR and merge it (main is protected — PRs only).
 
@@ -161,3 +163,6 @@ The HTML report is written to `coverage/index.html`.
 - `src/hooks/` — Claude Code hooks (bash-rewrite, read-guard, grep-guard,
   session-start, stop-hook, throttle).
 - `src/install/` — installer for platform rules + hooks.
+- `.claude-plugin/`, `plugin/`, `src/plugin*.js` — the Claude Code plugin.
+  `plugin/hooks.json` and `plugin/commands/` are generated: after changing the
+  hook or command tables, or bumping the version, run `npm run build:plugin`.

@@ -281,4 +281,4 @@ function uninstallHook(home) {
   }
 }
 
-module.exports = { installHook, uninstallHook, hookDest, pruneOrphanHooks, HOOK_BASENAMES: ALL_BASENAMES };
+module.exports = { installHook, uninstallHook, hookDest, pruneOrphanHooks, HOOK_BASENAMES: ALL_BASENAMES, HOOKS };

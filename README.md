@@ -20,7 +20,7 @@
   <img src="https://img.shields.io/badge/node-%E2%89%A518-0F0F0F" alt="node ≥18" />
   <img src="https://img.shields.io/badge/deps-0-0F0F0F" alt="zero dependencies" />
   <img src="https://img.shields.io/badge/agents-6-0F0F0F" alt="6 AI agents" />
-  <img src="https://img.shields.io/badge/tests-1178-0F0F0F" alt="1178 tests" />
+  <img src="https://img.shields.io/badge/tests-1209-0F0F0F" alt="1209 tests" />
 </p>
 
 <p align="center">
@@ -121,6 +121,16 @@ lakonai install
 ```
 
 That's it. From the next session your agent is terse, shell output is filtered, junk reads are blocked, the proxy compresses API traffic, and the graph intercepts file reads. Watch it in `lakonai gain`.
+
+### Or: as a Claude Code plugin (no npm)
+
+```
+/plugin install lakonai --marketplace bargadev/lakonai
+```
+
+On Claude Code older than 2.1.275: `/plugin marketplace add bargadev/lakonai`, then `/plugin install lakonai@lakonai`.
+
+The plugin ships the hooks (shell filters, read/grep guards, overflow sandbox, answer budget, auto-learning), the terse rule and the `/lakonai:*` commands, and puts the `lakonai` CLI on the session's PATH. It covers Claude Code only — the compression proxy, MCP catalog compression, the PATH shim for other tools and the Codex/Cursor/Gemini rules come with the npm install. If you have both, the plugin's hooks stand down and the npm install's run, so nothing fires twice.
 
 ---
 
@@ -378,7 +388,7 @@ Input is measured and deterministic. Output is estimated by your local AI CLI (n
 
 ## Test suite
 
-1178 tests across 70 suites — all passing, no mocks on I/O boundaries.
+1209 tests across 71 suites — all passing, no mocks on I/O boundaries.
 
 | Type | Suites | Tests |
 |------|--------|-------|
