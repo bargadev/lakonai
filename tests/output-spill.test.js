@@ -136,3 +136,52 @@ test('SPILLABLE_TOOLS covers the bulk-output tools and nothing structural', () =
     assert.ok(!hook.SPILLABLE_TOOLS.has(t), `${t} must not be spillable`);
   }
 });
+
+describe('subagents: only Bash output is parked (unit)', () => {
+  test('inside a subagent, non-Bash tools are left alone', () => {
+    for (const toolName of ['Read', 'Grep', 'Glob', 'WebFetch', 'Task']) {
+      assert.equal(hook.decide({ toolName, text: big, threshold: T, agentId: 'agent-1' }), null, toolName);
+    }
+  });
+
+  test('inside a subagent, Bash output is still parked (Bash proves `lakonai peek` works)', () => {
+    assert.ok(hook.decide({ toolName: 'Bash', text: big, threshold: T, agentId: 'agent-1' }));
+  });
+
+  test('empty agent_id behaves like the main agent', () => {
+    assert.ok(hook.decide({ toolName: 'WebFetch', text: big, threshold: T, agentId: '' }));
+  });
+});
+
+describe('subagents (E2E: the real hook process)', () => {
+  const { spawnSync } = require('node:child_process');
+  const fs = require('node:fs');
+  const os = require('node:os');
+  const path = require('node:path');
+  const HOOK = path.join(__dirname, '..', 'src', 'hooks', 'output-spill.js');
+
+  function run(payload) {
+    return spawnSync('node', [HOOK], {
+      input: JSON.stringify(payload),
+      encoding: 'utf8',
+      env: { ...process.env, LAKON_HOME: fs.mkdtempSync(path.join(os.tmpdir(), 'lakon-spill-sub-')) },
+    });
+  }
+
+  test('a WebFetch-only subagent keeps the full page', () => {
+    const r = run({ tool_name: 'WebFetch', tool_response: { result: big }, agent_id: 'a1', agent_type: 'web-fetch' });
+    assert.equal(r.status, 0);
+    assert.equal(r.stdout, '');
+  });
+
+  test('the main agent still gets the WebFetch digest', () => {
+    const r = run({ tool_name: 'WebFetch', tool_response: { result: big } });
+    const out = JSON.parse(r.stdout).hookSpecificOutput.updatedToolOutput;
+    assert.match(out.result, /parked in sandbox/);
+  });
+
+  test('a subagent that ran Bash still gets the Bash digest', () => {
+    const r = run({ tool_name: 'Bash', tool_input: { command: 'make' }, tool_response: { stdout: big, stderr: '' }, agent_id: 'a1' });
+    assert.match(JSON.parse(r.stdout).hookSpecificOutput.updatedToolOutput.stdout, /parked in sandbox/);
+  });
+});

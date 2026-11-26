@@ -77,7 +77,11 @@ context on every turn.
    after ANY tool and receives the real result, so it catches what (1) never sees:
    unrouted Bash (`terraform plan`, `./deploy.sh`), stderr, and `Read`/`Grep`/
    `Glob`/`WebFetch`/`Task` output. `SPILLABLE_TOOLS` deliberately excludes
-   `Edit`/`Write`/`TodoWrite` — structural results, not bulk.
+   `Edit`/`Write`/`TodoWrite` — structural results, not bulk. Inside a subagent
+   (hook input carries `agent_id`) ONLY `Bash` output is parked: a digest is useless
+   to an agent that cannot run `lakonai peek`, the payload does not say which tools
+   the subagent has, and a Bash result proves it has Bash (a WebFetch-only fetcher
+   used to get a digest it could never open).
 
 **`PostToolUse` is the ONLY event that can replace a tool result**
 (`updatedToolOutput`). PreToolUse fires before the output exists — it can cap

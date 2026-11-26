@@ -1,6 +1,6 @@
 {
   "name": "lakonai",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "description": "Save context tokens in Claude Code: filters shell output (git, grep, find, test runners, linters, docker…), blocks lockfile and vendored-dir reads, parks oversized tool output on disk, and keeps answers terse.",
   "author": {
     "name": "bargadev",

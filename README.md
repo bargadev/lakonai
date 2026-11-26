@@ -20,7 +20,7 @@
   <img src="https://img.shields.io/badge/node-%E2%89%A518-0F0F0F" alt="node ≥18" />
   <img src="https://img.shields.io/badge/deps-0-0F0F0F" alt="zero dependencies" />
   <img src="https://img.shields.io/badge/agents-6-0F0F0F" alt="6 AI agents" />
-  <img src="https://img.shields.io/badge/tests-1209-0F0F0F" alt="1209 tests" />
+  <img src="https://img.shields.io/badge/tests-1215-0F0F0F" alt="1215 tests" />
 </p>
 
 <p align="center">
@@ -256,7 +256,7 @@ lakonai pixel --revert       # byte-identical restore from backup
 
 ### Overflow sandbox (all agents)
 
-When a command's output still exceeds budget after filtering, lakonai parks the full text in `~/.lakon/sandbox/` and gives the agent a digest: head, tail, exit code, how to query. Nothing is lost — it stops being re-paid.
+When a command's output still exceeds budget after filtering, lakonai parks the full text in `~/.lakon/sandbox/` and gives the agent a digest: head, tail, exit code, how to query. Nothing is lost — it stops being re-paid. Inside a Claude Code subagent only Bash output is parked, since a subagent without Bash could not read the rest back.
 
 ```
 lakonai: 4000 lines / 249KB parked in sandbox 30930a0c
@@ -388,7 +388,7 @@ Input is measured and deterministic. Output is estimated by your local AI CLI (n
 
 ## Test suite
 
-1209 tests across 71 suites — all passing, no mocks on I/O boundaries.
+1215 tests across 71 suites — all passing, no mocks on I/O boundaries.
 
 | Type | Suites | Tests |
 |------|--------|-------|

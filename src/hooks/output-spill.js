@@ -84,8 +84,14 @@ function isAlreadyDigest(text) {
   return /^lakonai: \d+ lines \/ \d+KB parked in sandbox /.test(text);
 }
 
-function decide({ toolName, text, threshold }) {
+// A parked result is only useful to an agent that can run `lakonai peek`, i.e.
+// one with Bash. The main agent always has it; a subagent may not (a WebFetch-
+// only fetcher gets a digest it can never open). Hooks inside a subagent carry
+// `agent_id` (Claude Code hook input), and its tool set is not in the payload —
+// but a Bash result proves Bash, so inside a subagent only Bash output is parked.
+function decide({ toolName, text, threshold, agentId }) {
   if (!SPILLABLE_TOOLS.has(toolName)) return null;
+  if (agentId && toolName !== 'Bash') return null;
   if (typeof text !== 'string' || !text) return null;
   if (isAlreadyDigest(text)) return null;
   const tokens = countTokensApprox(text);
@@ -110,7 +116,7 @@ async function main() {
 
     const toolName = data.tool_name;
     const text = extractText(data);
-    if (!decide({ toolName, text, threshold: sandbox.spillThreshold() })) process.exit(0);
+    if (!decide({ toolName, text, threshold: sandbox.spillThreshold(), agentId: data.agent_id })) process.exit(0);
 
     // Check before parking, so an unreplaceable result leaves no orphan spill.
     if (replaceText(data, '') === null) process.exit(0);
