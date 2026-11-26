@@ -6,6 +6,12 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [1.7.2] - 2026-11-26
+
+### Changed
+- The project has a site: **https://lakon.fun**. It is the `homepage` in
+  `package.json` and in the Claude Code plugin manifests, and the README links it.
+
 ## [1.7.1] - 2026-11-26
 
 ### Fixed
