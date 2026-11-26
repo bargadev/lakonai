@@ -11,14 +11,23 @@
 <meta property="og:image" content="https://lakon.fun/assets/before-after.svg">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<script>
+  try { if (localStorage.getItem('lakonai-theme') === 'light') document.documentElement.dataset.theme = 'light'; } catch (e) {}
+</script>
 <style>
+  /* Dark is the default; the toggle (saved per browser) switches to light. */
   :root {
+    color-scheme: dark;
+    --bg: #0b0b0c; --fg: #f2f2f2; --muted: #a3a3a3; --line: #262628;
+    --card: #141416; --accent: #4cc27a; --code-bg: #0d1117; --code-fg: #e6edf3;
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
     --bg: #fafafa; --fg: #0f0f0f; --muted: #5b5b5b; --line: #e3e3e3;
-    --card: #ffffff; --accent: #1f7a3f; --code-bg: #0d1117; --code-fg: #e6edf3;
+    --card: #ffffff; --accent: #1f7a3f;
   }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg: #0b0b0c; --fg: #f2f2f2; --muted: #a3a3a3; --line: #262628; --card: #141416; --accent: #4cc27a; }
-  }
+  .theme-toggle { position: fixed; top: 14px; right: 14px; width: 38px; height: 38px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--fg); cursor: pointer; display: grid; place-items: center; font-size: 17px; line-height: 1; }
+  .theme-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   * { box-sizing: border-box; margin: 0; }
   body { background: var(--bg); color: var(--fg); font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
   main { max-width: 920px; margin: 0 auto; padding: 56px 16px 80px; }
@@ -64,6 +73,7 @@
 </style>
 </head>
 <body>
+<button class="theme-toggle" type="button" aria-label="Switch to light theme" title="Switch theme">☀</button>
 <main>
   <header>
     <img src="assets/logo.svg" alt="lakonai logo: a Spartan lambda inside a shield">
@@ -147,5 +157,21 @@ lakonai install</pre>
     <span><a href="https://github.com/bargadev/lakonai">GitHub</a> · <a href="https://www.npmjs.com/package/lakonai">npm</a> · <a href="https://github.com/bargadev/lakonai/blob/main/CHANGELOG.md">Changelog</a></span>
   </footer>
 </main>
+<script>
+  (function () {
+    var root = document.documentElement, btn = document.querySelector('.theme-toggle');
+    function paint() {
+      var light = root.dataset.theme === 'light';
+      btn.textContent = light ? '☾' : '☀';
+      btn.setAttribute('aria-label', light ? 'Switch to dark theme' : 'Switch to light theme');
+    }
+    btn.addEventListener('click', function () {
+      if (root.dataset.theme === 'light') delete root.dataset.theme; else root.dataset.theme = 'light';
+      try { localStorage.setItem('lakonai-theme', root.dataset.theme || 'dark'); } catch (e) {}
+      paint();
+    });
+    paint();
+  })();
+</script>
 </body>
 </html>
