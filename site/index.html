@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>lakonai — speak less, ship more</title>
+<meta name="description" content="lakonai filters shell output, guards file reads and parks oversized tool output before it reaches Claude Code, Codex and other coding agents. 86.3% fewer tokens across 10 real commands, measured in CI.">
+<meta property="og:title" content="lakonai — speak less, ship more">
+<meta property="og:description" content="Cut the tokens your coding agent spends on tool output. A 182k-line git diff went 1,513,910 → 2,331 tokens.">
+<meta property="og:url" content="https://lakon.fun/">
+<meta property="og:image" content="https://lakon.fun/assets/before-after.svg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #fafafa; --fg: #0f0f0f; --muted: #5b5b5b; --line: #e3e3e3;
+    --card: #ffffff; --accent: #1f7a3f; --code-bg: #0d1117; --code-fg: #e6edf3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0b0b0c; --fg: #f2f2f2; --muted: #a3a3a3; --line: #262628; --card: #141416; --accent: #4cc27a; }
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--bg); color: var(--fg); font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 920px; margin: 0 auto; padding: 56px 16px 80px; }
+  a { color: inherit; }
+  header { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; }
+  header img { width: 88px; height: 88px; }
+  h1 { font-size: clamp(2.2rem, 6vw, 3.2rem); letter-spacing: -0.03em; line-height: 1.1; }
+  .tag { font-size: 1.15rem; color: var(--muted); }
+  .hero-num { font-size: 1.05rem; max-width: 640px; }
+  .hero-num strong { color: var(--accent); }
+  .cta { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 6px; }
+  .btn { display: inline-block; padding: 9px 16px; border: 1px solid var(--line); border-radius: 8px; text-decoration: none; background: var(--card); font-weight: 600; font-size: .95rem; }
+  .btn.primary { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+  section { margin-top: 64px; }
+  h2 { font-size: 1.4rem; letter-spacing: -0.01em; margin-bottom: 14px; }
+  p + p { margin-top: 10px; }
+  .muted { color: var(--muted); }
+  figure img { width: 100%; height: auto; display: block; border-radius: 12px; }
+  figcaption { color: var(--muted); font-size: .88rem; margin-top: 8px; text-align: center; }
+  pre { background: var(--code-bg); color: var(--code-fg); padding: 14px 16px; border-radius: 10px; overflow-x: auto; font: 14px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .92em; }
+  .install { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .install > div { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
+  .install h3 { font-size: 1rem; margin-bottom: 8px; }
+  .install pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .install p { font-size: .9rem; color: var(--muted); margin-top: 10px; }
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .item { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+  .item h3 { font-size: 1rem; margin-bottom: 4px; }
+  .item p { font-size: .93rem; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; font-size: .93rem; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; white-space: normal; }
+  tfoot td { font-weight: 700; border-bottom: 0; }
+  .table-wrap { overflow-x: auto; }
+  .agents { display: flex; flex-wrap: wrap; gap: 8px; }
+  .agents span { border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: .9rem; background: var(--card); }
+  footer { margin-top: 72px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; }
+  @media (max-width: 680px) {
+    main { padding-top: 40px; }
+    .install, .grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="assets/logo.svg" alt="lakonai logo: a Spartan lambda inside a shield">
+    <h1>lakonai</h1>
+    <p class="tag">Speak less. Ship more.</p>
+    <p class="hero-num">Your coding agent pays for every byte of tool output it reads. lakonai cuts that before it reaches the context, without dropping an identifier. A 182k-line <code>git diff</code> went <strong>1,513,910 → 2,331 tokens</strong>.</p>
+    <div class="cta">
+      <a class="btn primary" href="#install">Install</a>
+      <a class="btn" href="https://github.com/bargadev/lakonai">GitHub</a>
+      <a class="btn" href="https://www.npmjs.com/package/lakonai">npm</a>
+    </div>
+  </header>
+
+  <section>
+    <figure>
+      <img src="assets/before-after.svg" width="880" height="470" alt="A 182k-line git diff main…HEAD went from 1,513,910 to 2,331 tokens (−99.8%), with structure and identifiers intact">
+    </figure>
+  </section>
+
+  <section id="install">
+    <h2>Install</h2>
+    <div class="install">
+      <div>
+        <h3>npm — every agent</h3>
+        <pre>npm install -g lakonai
+lakonai install</pre>
+        <p>Rule, hooks, compression proxy and MCP catalog compression for Claude Code, Codex, Cursor, Windsurf, Cline and Gemini CLI.</p>
+      </div>
+      <div>
+        <h3>Claude Code plugin — no npm</h3>
+        <pre>/plugin install lakonai --marketplace bargadev/lakonai</pre>
+        <p>Hooks, terse rule and <code>/lakonai:*</code> commands. On Claude Code older than 2.1.275: <code>/plugin marketplace add bargadev/lakonai</code>, then <code>/plugin install lakonai@lakonai</code>.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>What it does</h2>
+    <div class="grid">
+      <div class="item"><h3>Filters shell output</h3><p>30+ commands — git, grep, find, ls, test runners, linters, docker, kubectl, aws. Paths, identifiers and error lines stay verbatim; the noise goes.</p></div>
+      <div class="item"><h3>Guards file reads</h3><p>Blocks lockfiles and <code>node_modules</code>, caps huge reads and greps, and can serve a compact AST subgraph instead of a whole source file.</p></div>
+      <div class="item"><h3>Parks oversized output</h3><p>A 4k-line build log goes to disk; the agent gets head, tail and exit code, and reads the rest with <code>lakonai peek</code>.</p></div>
+      <div class="item"><h3>Keeps answers short</h3><p>A terse-reply rule plus an answer budget restated every turn: summary first, depth when you ask for it.</p></div>
+      <div class="item"><h3>Learns new commands</h3><p>Detects heavy commands it has no filter for and enables a safe one automatically.</p></div>
+      <div class="item"><h3>Shows your numbers</h3><p><code>lakonai gain</code> reports what you saved; <code>lakonai gain --share</code> turns it into a card you can post.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Measured, not estimated</h2>
+    <p class="muted">An end-to-end test builds a git repository, runs each command raw and through lakonai, and fails CI if a command drops below its floor or loses a line that matters — the newest commit, the changed lines, the build warning.</p>
+    <div class="table-wrap" style="margin-top:14px">
+      <table>
+        <thead><tr><th>Command</th><th>Raw</th><th>lakonai</th><th>Smaller</th></tr></thead>
+        <tbody>
+          <tr><td><code>grep -rn transform src</code></td><td>7,105</td><td>217</td><td>96.9%</td></tr>
+          <tr><td><code>git diff HEAD~10</code></td><td>10,086</td><td>1,130</td><td>88.8%</td></tr>
+          <tr><td><code>git -C &lt;repo&gt; diff HEAD~10</code></td><td>10,086</td><td>1,130</td><td>88.8%</td></tr>
+          <tr><td><code>git log</code></td><td>2,239</td><td>299</td><td>86.6%</td></tr>
+          <tr><td><code>cd &lt;repo&gt; &amp;&amp; git log</code> (via hook)</td><td>2,239</td><td>299</td><td>86.6%</td></tr>
+          <tr><td><code>ls -la src/api</code></td><td>180</td><td>36</td><td>80%</td></tr>
+          <tr><td><code>git status</code></td><td>177</td><td>113</td><td>36.2%</td></tr>
+          <tr><td><code>find . -type f</code></td><td>419</td><td>287</td><td>31.5%</td></tr>
+          <tr><td><code>make</code></td><td>969</td><td>824</td><td>15%</td></tr>
+          <tr><td><code>sed -n '1,60p' file</code></td><td>300</td><td>300</td><td>0%</td></tr>
+        </tbody>
+        <tfoot><tr><td>Total (tokens)</td><td>33,800</td><td>4,635</td><td>86.3%</td></tr></tfoot>
+      </table>
+    </div>
+    <p class="muted" style="margin-top:10px">File reads are content the agent asked for, so they stay untouched. Full method: <a href="https://github.com/bargadev/lakonai/blob/main/docs/benchmark-e2e.md">docs/benchmark-e2e.md</a>.</p>
+  </section>
+
+  <section>
+    <h2>Works with</h2>
+    <div class="agents"><span>Claude Code</span><span>Codex</span><span>Cursor</span><span>Windsurf</span><span>Cline</span><span>Gemini CLI</span></div>
+    <p class="muted" style="margin-top:12px">Zero dependencies. MIT licensed. Node 18+.</p>
+  </section>
+
+  <footer>
+    <span>lakonai — named for Lakonía, the land of the laconic.</span>
+    <span><a href="https://github.com/bargadev/lakonai">GitHub</a> · <a href="https://www.npmjs.com/package/lakonai">npm</a> · <a href="https://github.com/bargadev/lakonai/blob/main/CHANGELOG.md">Changelog</a></span>
+  </footer>
+</main>
+</body>
+</html>

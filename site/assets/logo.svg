@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" role="img" aria-label="lakonai">
+  <title>lakonai</title>
+  <circle cx="120" cy="120" r="112" fill="#0F0F0F"/>
+  <circle cx="120" cy="120" r="96" fill="none" stroke="#F5F5F5" stroke-width="10"/>
+  <path d="M 72 178 L 120 60 L 168 178" fill="none" stroke="#F5F5F5" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
