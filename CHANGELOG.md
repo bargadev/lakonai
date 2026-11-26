@@ -6,6 +6,16 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [1.7.1] - 2026-11-26
+
+### Fixed
+- **Subagents without Bash no longer get output they cannot open.** The
+  PostToolUse spill replaced large Read/Grep/Glob/WebFetch/Task results with a
+  digest that points to `lakonai peek` — useless to a subagent that has no Bash
+  (a WebFetch-only fetcher got a truncated page and nothing else). Inside a
+  subagent (hook input carries `agent_id`) only Bash output is parked now; the
+  main agent is unchanged.
+
 ## [1.7.0] - 2026-11-26
 
 ### Added
