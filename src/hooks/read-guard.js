@@ -79,10 +79,33 @@ const READ_TOKEN_BUDGET = 8000;
 const FULL_READ_LIMIT = 4 * 1024 * 1024;
 const SAMPLE_BYTES = 64 * 1024;
 
-function isDeniedPath(p) {
+// The OS temp root is not a project's tmp/. Agents keep scratch files there
+// (Claude Code's scratchpad lives under /private/tmp/claude-<uid>/…), so only the
+// part of the path BELOW the temp root is matched against DENY_DIRS — a repo
+// cloned into /tmp still has its node_modules/ and tmp/ guarded.
+const SYSTEM_TMP_RE = /^(?:\/private)?(?:\/tmp\/|\/var\/folders\/[^/]+\/[^/]+\/T\/)/;
+
+function stripSystemTmp(norm, tmpdir = os.tmpdir()) {
+  const m = norm.match(SYSTEM_TMP_RE);
+  if (m) return norm.slice(m[0].length);
+  const root = String(tmpdir || '').replace(/\\/g, '/').replace(/\/+$/, '');
+  if (root && norm.startsWith(`${root}/`)) return norm.slice(root.length + 1);
+  return norm;
+}
+
+// Files the Read tool renders instead of reading as text. Line caps and token
+// budgets are text rules: a PNG has no meaningful lines, and a capped `limit`
+// does not shrink an image. Dir/lockfile denies still apply.
+const MEDIA_RE = /\.(png|jpe?g|gif|webp|bmp|ico|pdf)$/i;
+
+function isMediaPath(p) {
+  return typeof p === 'string' && MEDIA_RE.test(p);
+}
+
+function isDeniedPath(p, { tmpdir } = {}) {
   /* istanbul ignore next */
   if (typeof p !== 'string' || !p) return null;
-  const norm = p.replace(/\\/g, '/');
+  const norm = stripSystemTmp(p.replace(/\\/g, '/'), tmpdir);
   for (const dir of DENY_DIRS) {
     if (norm.includes(`/${dir}/`) || norm.endsWith(`/${dir}`) || norm.startsWith(`${dir}/`)) {
       return `path lives under ${dir}/ — read costs context for noise. grep -n the symbol instead, then Read with offset/limit.`;
@@ -274,7 +297,7 @@ async function main() {
       process.exit(0);
     }
 
-    if (input.limit == null && input.offset == null) {
+    if (input.limit == null && input.offset == null && !isMediaPath(fp)) {
       const cap = capForFile(fp);
       if (cap && cap.deny) {
         const rawTokens = estimateTokensByBytes(fp);
@@ -331,6 +354,8 @@ if (require.main === module) main();
 
 module.exports = {
   isDeniedPath,
+  isMediaPath,
+  stripSystemTmp,
   fileLineCount,
   sampledLineCount,
   capForFile,
