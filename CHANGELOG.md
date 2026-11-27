@@ -6,6 +6,22 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [1.7.3] - 2026-11-26
+
+### Fixed
+- **Read guard no longer blocks the OS temp directory.** The `tmp` deny dir
+  matched any path containing `/tmp/`, so every Read (and `lakonai cat`) under
+  `/tmp`, `/private/tmp` or macOS `/var/folders/…/T/` was refused — including
+  Claude Code's scratchpad. Deny dirs are now matched only below the temp root,
+  so a repo cloned into `/tmp` keeps its `tmp/` and `node_modules/` guarded.
+- **Images and PDFs skip the line/token caps.** A screenshot has no meaningful
+  lines; as text it looked like one enormous line and was denied as "too wide
+  to cap". Directory and lockfile denies still apply.
+
+### Changed
+- README badge and site now say **no required dependencies**: semantic search
+  (`@xenova/transformers`) and `pixel` (`canvas`) ship as optional packages.
+
 ## [1.7.2] - 2026-11-26
 
 ### Changed

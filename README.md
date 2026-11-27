@@ -19,9 +19,9 @@
   <a href="https://github.com/bargadev/lakonai"><img src="https://img.shields.io/badge/GitHub-bargadev%2Flakonai-0F0F0F?logo=github" alt="GitHub repo" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-0F0F0F" alt="MIT" /></a>
   <img src="https://img.shields.io/badge/node-%E2%89%A518-0F0F0F" alt="node ≥18" />
-  <img src="https://img.shields.io/badge/deps-0-0F0F0F" alt="zero dependencies" />
+  <img src="https://img.shields.io/badge/required%20deps-0-0F0F0F" alt="zero required dependencies" />
   <img src="https://img.shields.io/badge/agents-6-0F0F0F" alt="6 AI agents" />
-  <img src="https://img.shields.io/badge/tests-1215-0F0F0F" alt="1215 tests" />
+  <img src="https://img.shields.io/badge/tests-1230-0F0F0F" alt="1230 tests" />
 </p>
 
 <p align="center">
@@ -389,7 +389,7 @@ Input is measured and deterministic. Output is estimated by your local AI CLI (n
 
 ## Test suite
 
-1215 tests across 71 suites — all passing, no mocks on I/O boundaries.
+1230 tests across 72 suites — all passing, no mocks on I/O boundaries.
 
 | Type | Suites | Tests |
 |------|--------|-------|
@@ -414,7 +414,7 @@ Your AI agent isn't laconic. It opens with _"Sure! I'd be happy to help…"_, re
 
 ## Credits
 
-lakonai is an original, zero-dependency tool written from scratch. Several of its
+lakonai is an original tool with no required dependencies, written from scratch. Several of its
 layers were **inspired by** prior art — none of it is vendored or forked, and the
 compression engine, auto-learning, read-guard, overflow sandbox, and BM25 graph
 query are lakonai's own:

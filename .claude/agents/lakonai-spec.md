@@ -329,7 +329,13 @@ reason it is not a SessionStart auto-rewrite.
   `FOO=1 pytest` still rewrites to nothing (first word is `FOO=1`).
   The same file is installed into Codex as a PreToolUse hook
   (`src/install/codex-hook.js`); Codex accepts the identical JSON.
-- `read-guard.js` — denies Reads of build/dep dirs & lockfiles; caps huge files via
+- `read-guard.js` — denies Reads of build/dep dirs & lockfiles. `isDeniedPath`
+  matches `DENY_DIRS` only against the path BELOW the OS temp root
+  (`stripSystemTmp`: `/tmp/`, `/private/tmp/`, macOS `/var/folders/…/T/`,
+  `os.tmpdir()`), so agent scratch files are readable while a repo cloned into
+  /tmp keeps its `tmp/` and `node_modules/` guarded. Media the Read tool renders
+  (`isMediaPath`: png/jpg/gif/webp/bmp/ico/pdf) skip the line/token caps below.
+  Caps huge files via
   `capForFile(path)`, which returns `null` (fits) / `{limit,lines,tokens}` (cap) /
   `{deny:true,…}` (uncappable). **Two ceilings, tighter wins:** `AUTO_CAP_LINES`
   (800) for many ordinary lines, and `READ_TOKEN_BUDGET` (8000) enforced as bytes
