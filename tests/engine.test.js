@@ -147,6 +147,18 @@ test('isTestCommand routing rules', () => {
   assert.equal(test.isTestCommand('npm', ['test']), true);
   assert.equal(test.isTestCommand('npm', ['run', 'test']), true);
   assert.equal(test.isTestCommand('npm', ['install']), false);
+  assert.equal(test.isTestCommand('pnpm', ['--filter', '@notetaker/api', 'test:e2e', 'video-import']), true);
+  assert.equal(test.isTestCommand('pnpm', ['-F', 'api', 'run', 'test:unit']), true);
+  assert.equal(test.isTestCommand('npm', ['--prefix', 'apps/web', 'run', 'e2e']), true);
+  assert.equal(test.isTestCommand('yarn', ['workspace', '@app/api', 'test']), true);
+  assert.equal(test.isTestCommand('yarn', ['workspace', '@app/api', 'run', 'test:ci']), true);
+  assert.equal(test.isTestCommand('pnpm', ['--filter', 'test', 'build']), false);
+  assert.equal(test.isTestCommand('pnpm', ['run', 'testimonials']), false);
+  assert.equal(test.isTestCommand('npm', []), false);
+  assert.equal(test.isTestCommand('node', ['--test', 'test/sum.test.mjs']), true);
+  assert.equal(test.isTestCommand('node', ['--test']), true);
+  assert.equal(test.isTestCommand('node', ['server.js']), false);
+  assert.equal(test.isTestCommand('deno', ['test']), true);
   assert.equal(test.isTestCommand('go', ['test', './...']), true);
   assert.equal(test.isTestCommand('go', ['build']), false);
   assert.equal(test.isTestCommand('cargo', ['nextest', 'run']), true);

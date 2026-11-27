@@ -12,7 +12,8 @@ const SUMMARY_RE = [
   /\bpassing\b|\bfailing\b/i, // mocha
   /^=+ .*\b(passed|failed|error)\b.* =+$/i, // pytest:  === 1 failed, 9 passed in 0.4s ===
   /^test result:/i, // cargo:  test result: FAILED. 9 passed; 1 failed
-  /^(ok|FAIL)\b/i, // go per-package:  ok  pkg  0.1s  /  FAIL pkg
+  /^(ok|FAIL)\b(?!\s+\d+\s+-\s)/i, // go per-package:  ok  pkg  0.1s  /  FAIL pkg  (not TAP "ok 1 - name")
+  /^(#|ℹ) (tests|suites|pass|fail|cancelled) \d+$/, // node --test (tap / spec):  # pass 5  ·  ℹ fail 0
 ];
 
 // Failure markers — keep the line and let surrounding detail through.
@@ -28,10 +29,25 @@ const PASS_NOISE_RE = [
   /^\s*test .+ \.\.\. ok\s*$/, // cargo passing test
   /^\s*(Compiling|Finished|Running|Downloaded|Fresh)\b/, // cargo build noise
   /^\s*\.+\s*\[?\s*\d+%/, // pytest progress dots:  .....  [ 80%]
+  /^\[Nest\]\s+\d+\s+-\s.*\s(LOG|DEBUG|VERBOSE)\s/, // NestJS app logs printed while e2e tests boot the app
   /^\s*$/, // blank
 ];
 
+// A summary line that reports at least one failure (jest/vitest/pytest/mocha/cargo/go).
+const FAILED_COUNT_RE = /\b[1-9]\d* (failed|failing|errors?)\b|^(#|ℹ) (fail|cancelled) [1-9]/i;
+const FAILED_WORD_RE = /\bFAILED\b|^FAIL\b/; // cargo "test result: FAILED", go "FAIL pkg"
+
+// The runner's own summary is the verdict when it printed one: app logs inside a green
+// e2e run often contain "Error" or "Expected", which must not turn it into a failure.
+function summaryVerdict(lines) {
+  const summary = pickSummary(lines);
+  if (!summary.length) return undefined;
+  return !summary.some((line) => FAILED_COUNT_RE.test(line) || FAILED_WORD_RE.test(line.trim()));
+}
+
 function isAllPass(lines) {
+  const verdict = summaryVerdict(lines);
+  if (verdict !== undefined) return verdict;
   let sawTest = false;
   for (const line of lines) {
     if (/✓|√|✔|\bPASS\b|--- PASS:|\.\.\. ok|\bpassed\b|\bpassing\b|\bok\b/i.test(line)) sawTest = true;
@@ -75,17 +91,38 @@ function filter(raw, opts = {}) {
 // Direct test-runner binaries (always a test invocation).
 const TEST_BINS = new Set(['jest', 'vitest', 'mocha', 'pytest', 'py.test', 'ava']);
 // Package-manager / toolchain front-ends that run tests via a subcommand.
-const TEST_FIRST_WORDS = new Set([...TEST_BINS, 'npm', 'pnpm', 'yarn', 'bun', 'go', 'cargo']);
+const TEST_FIRST_WORDS = new Set([...TEST_BINS, 'npm', 'pnpm', 'yarn', 'bun', 'go', 'cargo', 'node', 'deno']);
+const PACKAGE_MANAGERS = new Set(['npm', 'pnpm', 'yarn', 'bun']);
+// Flags whose next argument is a value, not the script name:  pnpm --filter @app/api test
+const PM_VALUE_FLAGS = new Set(['--filter', '-F', '--dir', '-C', '--prefix', '--workspace', '--cwd']);
+// Script names that run tests:  test, t, test:e2e, test-unit, test_ci, e2e, e2e:api
+const TEST_SCRIPT_RE = /^(test|t|e2e)([:_-].*)?$/;
+
+function positionalArgs(args) {
+  const out = [];
+  for (let i = 0; i < args.length; i++) {
+    if (PM_VALUE_FLAGS.has(args[i])) i++;
+    else if (!args[i].startsWith('-')) out.push(args[i]);
+  }
+  return out;
+}
+
+function packageScript(args) {
+  const a = positionalArgs(args);
+  if (a[0] === 'workspace') return a[2] === 'run' ? a[3] : a[2]; // yarn workspace @app/api test
+  return a[0] === 'run' ? a[1] : a[0];
+}
 
 // Decide whether `<cmd> <args...>` is a test run whose output test.filter handles.
 function isTestCommand(cmd, args = []) {
   if (TEST_BINS.has(cmd)) return true;
+  if (cmd === 'node' || cmd === 'bun' || cmd === 'deno') {
+    if (args.includes('--test') || (cmd !== 'node' && args[0] === 'test')) return true;
+  }
   const a = args.filter((x) => !x.startsWith('-'));
   if (cmd === 'go') return a[0] === 'test';
   if (cmd === 'cargo') return a[0] === 'test' || a[0] === 'nextest';
-  if (cmd === 'npm' || cmd === 'pnpm' || cmd === 'yarn' || cmd === 'bun') {
-    return a[0] === 'test' || a[0] === 't' || (a[0] === 'run' && a[1] === 'test');
-  }
+  if (PACKAGE_MANAGERS.has(cmd)) return TEST_SCRIPT_RE.test(packageScript(args) ?? '');
   return false;
 }
 

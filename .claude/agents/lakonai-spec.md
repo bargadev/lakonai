@@ -119,8 +119,14 @@ actually paid, not what it would have paid.
 
 1. **Hand-written JS filters** (`src/filters/{git,ls,cat,grep,find,test}.js`) —
    for output that needs real parsing/logic. `find.js` groups by directory;
-   `test.js` understands jest/vitest/pytest/go/cargo/mocha output (collapse
-   passes, keep failures + summary).
+   `test.js` understands jest/vitest/pytest/go/cargo/mocha/`node --test` output
+   (collapse passes, keep failures + summary). The runner's own summary line is
+   the pass/fail verdict when present (`summaryVerdict`), so app logs with
+   "Error" inside a green e2e run don't flip it. `isTestCommand` skips
+   package-manager value flags (`--filter`, `-F`, `--prefix`, `--dir`, `-C`,
+   `--workspace`, `--cwd`) and accepts `test`, `t`, `test:*`, `test-*`, `e2e*`
+   scripts, `yarn workspace <pkg> test`, `node --test` and `deno test`/`bun test`.
+   NestJS `LOG`/`DEBUG`/`VERBOSE` lines are pass-noise (WARN/ERROR are kept).
 2. **Declarative engine** (`src/filters/engine.js` + `src/filters/defs.js`) — for
    "strip noise + cap" cases. Adding a command = one entry in `defs.js`. Pipeline
    stages: stripAnsi → replace → matchOutput (short-circuit) → strip/keepLines →

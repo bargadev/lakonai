@@ -6,6 +6,23 @@ this file (no git tags). Format loosely follows
 
 ## [Unreleased]
 
+## [1.7.4] - 2026-11-27
+
+### Added
+- **More test commands use the test filter.** Workspace scripts
+  (`pnpm --filter @app/api test:e2e`, `-F`, `--prefix`, `--dir`,
+  `yarn workspace @app/api test`), any `test:*` / `test-*` / `e2e*` script,
+  `node --test`, `deno test` and `bun test`. Before, they fell to the generic
+  path and a green 54 KB Jest + NestJS e2e run came back as 4 KB of logs; now it
+  is the two summary lines.
+
+### Fixed
+- **A green run is judged by the runner's summary.** App logs printed during an
+  e2e run (`Error: video is private`, `Expected …`) no longer make lakonai treat
+  a passing suite as failing.
+- **NestJS boot logs are dropped** (`LOG`, `DEBUG`, `VERBOSE`; `WARN` and
+  `ERROR` stay), and TAP `ok 1 - name` lines are no longer kept as summary.
+
 ## [1.7.3] - 2026-11-26
 
 ### Fixed

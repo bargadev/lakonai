@@ -12,7 +12,7 @@
       "name": "lakonai",
       "source": "./",
       "description": "Filters shell output, guards file reads, parks oversized output and keeps answers terse.",
-      "version": "1.7.3",
+      "version": "1.7.4",
       "category": "productivity",
       "homepage": "https://lakon.fun"
     }

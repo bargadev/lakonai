@@ -21,7 +21,7 @@
   <img src="https://img.shields.io/badge/node-%E2%89%A518-0F0F0F" alt="node ≥18" />
   <img src="https://img.shields.io/badge/required%20deps-0-0F0F0F" alt="zero required dependencies" />
   <img src="https://img.shields.io/badge/agents-6-0F0F0F" alt="6 AI agents" />
-  <img src="https://img.shields.io/badge/tests-1230-0F0F0F" alt="1230 tests" />
+  <img src="https://img.shields.io/badge/tests-1238-0F0F0F" alt="1238 tests" />
 </p>
 
 <p align="center">
@@ -144,6 +144,8 @@ Thirty-plus command filters run as a PATH shim or Claude Code hook before output
 ```bash
 lakonai git log -p     # → summary only
 lakonai npm test       # → final counts only
+lakonai pnpm --filter api test:e2e   # → final counts only (workspace scripts too)
+lakonai node --test    # → # pass / # fail only
 lakonai ls -la         # → files without noise
 ```
 
@@ -389,7 +391,7 @@ Input is measured and deterministic. Output is estimated by your local AI CLI (n
 
 ## Test suite
 
-1230 tests across 72 suites — all passing, no mocks on I/O boundaries.
+1238 tests across 72 suites — all passing, no mocks on I/O boundaries.
 
 | Type | Suites | Tests |
 |------|--------|-------|

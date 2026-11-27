@@ -101,3 +101,52 @@ test('all-pass with no summary line falls back to tests: ok', () => {
 test('non-test noise with no failures stripped to empty → tests: ok', () => {
   assert.equal(tf.filter('   Compiling foo v0.1.0'), 'tests: ok');
 });
+
+test('jest e2e: a green run with app error logs collapses to the summary', () => {
+  const raw = [
+    '\u001b[32m[Nest] 21472  - \u001b[39m11/27/2026, 12:46:41 AM \u001b[32m    LOG\u001b[39m [NestFactory] Starting Nest application...',
+    '[Nest] 21472  - 11/27/2026, 12:46:42 AM   ERROR [ExceptionsHandler] Error: video is private',
+    '    Expected the import to fail',
+    'PASS test/video-import.e2e-spec.ts (42 s)',
+    'Test Suites: 1 passed, 1 total',
+    'Tests:       9 passed, 9 total',
+  ].join('\n');
+  const out = tf.filter(raw);
+  assert.equal(out, 'Test Suites: 1 passed, 1 total\nTests:       9 passed, 9 total');
+});
+
+test('jest e2e: a failing run drops Nest LOG lines but keeps errors and the summary', () => {
+  const raw = [
+    '[Nest] 1  - 11/27/2026, 12:46:41 AM     LOG [RouterExplorer] Mapped {/v1/me, GET} route',
+    '[Nest] 1  - 11/27/2026, 12:46:41 AM    WARN [VideoImport] video model busy (503)',
+    'FAIL test/video-import.e2e-spec.ts',
+    '  ✕ imports a video (30 ms)',
+    '    Expected: 201',
+    '    Received: 500',
+    'Tests:       1 failed, 8 passed, 9 total',
+  ].join('\n');
+  const out = tf.filter(raw);
+  assert.doesNotMatch(out, /RouterExplorer/);
+  assert.match(out, /WARN \[VideoImport\]/);
+  assert.match(out, /Received: 500/);
+  assert.match(out, /1 failed, 8 passed/);
+});
+
+test('summary verdict: a failed count in any summary line is a failure', () => {
+  assert.equal(tf.isAllPass(['Test Suites: 1 failed, 1 total', 'Tests: 9 passed, 9 total']), false);
+  assert.equal(tf.isAllPass(['test result: FAILED. 9 passed; 1 failed']), false);
+  assert.equal(tf.isAllPass(['=== 3 passed in 0.1s ===']), true);
+  assert.equal(tf.isAllPass(['Tests: 0 failed, 3 passed']), true);
+});
+
+test('without a runner summary, a failure marker line still means failure', () => {
+  assert.equal(tf.isAllPass(['✓ adds', '  AssertionError: 1 !== 2']), false);
+  assert.equal(tf.isAllPass(['✓ adds', 'all 0 failed']), true);
+});
+
+test('node --test: tap and spec summaries decide pass or fail', () => {
+  const tap = ['TAP version 13', '# Subtest: adds', 'ok 1 - adds', '1..1', '# tests 1', '# suites 0', '# pass 1', '# fail 0', '# cancelled 0'].join('\n');
+  assert.equal(tf.filter(tap), '# tests 1\n# suites 0\n# pass 1\n# fail 0\n# cancelled 0');
+  assert.equal(tf.isAllPass(['# tests 2', '# pass 1', '# fail 1']), false);
+  assert.equal(tf.isAllPass(['ℹ tests 3', 'ℹ pass 3', 'ℹ fail 0']), true);
+});
